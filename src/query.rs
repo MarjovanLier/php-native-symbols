@@ -36,18 +36,39 @@ pub fn is_function(name: &str) -> bool {
 
 /// Whether `name` is a native function available at `version`.
 ///
-/// M1 gates on `added` only; `removed` arrives in M2, so this does not yet
-/// exclude functions removed within the range. Intended for versions in the
+/// Available means present at `version`: introduced at or before it (`added` is
+/// `None` for functions predating the 7.4 floor, which count as present) and not
+/// yet removed (`removed` absent, or strictly after `version`). A deprecated but
+/// still-present function counts as available. Intended for versions in the
 /// supported range (7.4 to 8.5).
 #[must_use]
 pub fn is_function_available(name: &str, version: PhpVersion) -> bool {
     let Some(availability) = function_availability(name) else {
         return false;
     };
-    match availability.added {
+    let introduced = match availability.added {
         Some(added) => added <= version,
-        // Predates the 7.4 floor: available throughout the supported range.
+        // Predates the 7.4 floor: present from the start of the supported range.
         None => true,
+    };
+    let not_removed = match availability.removed {
+        Some(removed) => version < removed,
+        None => true,
+    };
+    introduced && not_removed
+}
+
+/// Whether `name` is a native function deprecated at `version`.
+///
+/// True when the function has a deprecation version at or before `version`.
+/// Returns `false` for an unknown name or one never deprecated. A function stays
+/// deprecated once deprecated, including after it is removed. Intended for
+/// versions in the supported range (7.4 to 8.5).
+#[must_use]
+pub fn is_function_deprecated_at(name: &str, version: PhpVersion) -> bool {
+    match function_availability(name).and_then(|a| a.deprecated) {
+        Some(deprecated) => deprecated <= version,
+        None => false,
     }
 }
 
@@ -126,6 +147,14 @@ mod tests {
                     "{name} added {added:?} is not a covered version"
                 );
             }
+            // A removal must be a covered version; deprecation may predate the
+            // floor (a fact kept as the real version), so it is not constrained.
+            if let Some(removed) = availability.removed {
+                assert!(
+                    covered.contains(&removed),
+                    "{name} removed {removed:?} is not a covered version"
+                );
+            }
             // `replacement` is meaningful only for a deprecated symbol.
             if availability.replacement.is_some() {
                 assert!(
@@ -133,7 +162,87 @@ mod tests {
                     "{name} has a replacement but is not deprecated"
                 );
             }
+            // Lifecycle ordering holds wherever each pair is present.
+            if let (Some(added), Some(deprecated)) = (availability.added, availability.deprecated) {
+                assert!(
+                    added <= deprecated,
+                    "{name}: added {added:?} > deprecated {deprecated:?}"
+                );
+            }
+            if let (Some(deprecated), Some(removed)) =
+                (availability.deprecated, availability.removed)
+            {
+                assert!(
+                    deprecated <= removed,
+                    "{name}: deprecated {deprecated:?} > removed {removed:?}"
+                );
+            }
+            if let (Some(added), Some(removed)) = (availability.added, availability.removed) {
+                assert!(
+                    added <= removed,
+                    "{name}: added {added:?} > removed {removed:?}"
+                );
+            }
         }
+    }
+
+    #[test]
+    fn spot_checks_lock_known_deprecation_and_removal() {
+        let a = |name| function_availability(name).expect("known function");
+        // Deprecated pre-floor (7.2), removed 8.0, with a successor.
+        let create_function = a("create_function");
+        assert_eq!(create_function.deprecated, Some(PhpVersion::minor(7, 2)));
+        assert_eq!(create_function.removed, Some(PhpVersion::minor(8, 0)));
+        // each: removed 8.0 (deprecation 7.2 is also recorded).
+        assert_eq!(a("each").removed, Some(PhpVersion::minor(8, 0)));
+        // money_format: deprecated at the floor (7.4), removed 8.0.
+        let money_format = a("money_format");
+        assert_eq!(money_format.deprecated, Some(PhpVersion::minor(7, 4)));
+        assert_eq!(money_format.removed, Some(PhpVersion::minor(8, 0)));
+        // utf8_encode: deprecated 8.2, still present, replaced by mb_convert_encoding.
+        let utf8_encode = a("utf8_encode");
+        assert_eq!(utf8_encode.deprecated, Some(PhpVersion::minor(8, 2)));
+        assert_eq!(utf8_encode.removed, None);
+        assert_eq!(utf8_encode.replacement, Some("mb_convert_encoding()"));
+    }
+
+    #[test]
+    fn availability_excludes_removed_functions() {
+        // create_function was removed in 8.0: available at 7.4, gone by 8.0.
+        assert!(is_function_available(
+            "create_function",
+            PhpVersion::minor(7, 4)
+        ));
+        assert!(!is_function_available(
+            "create_function",
+            PhpVersion::minor(8, 0)
+        ));
+        // A deprecated-but-present function stays available.
+        assert!(is_function_available(
+            "utf8_encode",
+            PhpVersion::minor(8, 2)
+        ));
+    }
+
+    #[test]
+    fn deprecation_gates_on_deprecated_version() {
+        assert!(!is_function_deprecated_at(
+            "utf8_encode",
+            PhpVersion::minor(8, 1)
+        ));
+        assert!(is_function_deprecated_at(
+            "utf8_encode",
+            PhpVersion::minor(8, 2)
+        ));
+        // Never deprecated, and unknown name: both false.
+        assert!(!is_function_deprecated_at(
+            "strlen",
+            PhpVersion::minor(8, 5)
+        ));
+        assert!(!is_function_deprecated_at(
+            "not_a_php_function",
+            PhpVersion::minor(8, 5)
+        ));
     }
 
     #[test]

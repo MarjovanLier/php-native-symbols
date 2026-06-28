@@ -9,20 +9,25 @@
 //! stays in the table and is flagged via `deprecated`; a symbol removed at or
 //! before 7.4 is excluded entirely.
 //!
-//! This is the M2 milestone: native function availability, deprecation and
-//! removal, plus an editorial deprecation `replacement`. The function table in
-//! `generated/functions.rs` is machine-written from pinned phpstorm-stubs data,
-//! cross-checked against PHPCompatibility (see `tools/regenerate` and `NOTICE`).
-//! Constants and classes arrive in later milestones.
+//! This is the M3 milestone: native function and constant availability,
+//! deprecation and removal, plus an editorial deprecation `replacement`. The
+//! tables in `generated/functions.rs` and `generated/constants.rs` are
+//! machine-written from pinned phpstorm-stubs data, cross-checked against
+//! PHPCompatibility (see `tools/regenerate` and `NOTICE`). Constant names are
+//! case-sensitive; function names are not. Classes arrive in a later milestone.
 
 #![forbid(unsafe_code)]
 
 mod availability;
+mod constants;
 mod generated;
 mod query;
 mod version;
 
 pub use availability::{Availability, SymbolKind};
+pub use constants::{
+    constant_availability, is_constant, is_constant_available, is_constant_deprecated_at,
+};
 pub use query::{
     function_availability, is_function, is_function_available, is_function_deprecated_at,
 };

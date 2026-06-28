@@ -41,6 +41,22 @@ pub fn is_class(name: &str) -> bool {
     class_availability(name).is_some()
 }
 
+/// Iterate every native class, interface and enum as `(name, &Availability)`, in
+/// sorted name order.
+pub fn classes() -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    CLASSES
+        .iter()
+        .map(|(name, availability)| (*name, availability))
+}
+
+/// Iterate every declared native method as `(class, method, &Availability)`, in
+/// sorted `(class, method)` order.
+pub fn methods() -> impl Iterator<Item = (&'static str, &'static str, &'static Availability)> {
+    METHODS
+        .iter()
+        .map(|(class, method, availability)| (*class, *method, availability))
+}
+
 /// Whether `name` is a native class-like available at `version` (case-insensitive).
 #[must_use]
 pub fn is_class_available(name: &str, version: PhpVersion) -> bool {

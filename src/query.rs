@@ -34,6 +34,15 @@ pub fn is_function(name: &str) -> bool {
     function_availability(name).is_some()
 }
 
+/// Iterate every native function as `(name, &Availability)`, in sorted name
+/// order. Lets a consumer scan or filter the whole set, for example to keep only
+/// functions whose `extension` is a core one.
+pub fn functions() -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    FUNCTIONS
+        .iter()
+        .map(|(name, availability)| (*name, availability))
+}
+
 /// Whether `name` is a native function available at `version`.
 ///
 /// Available means present at `version`: introduced at or before it (`added` is

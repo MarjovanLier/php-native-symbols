@@ -38,6 +38,14 @@ pub fn is_constant(name: &str) -> bool {
     constant_availability(name).is_some()
 }
 
+/// Iterate every native constant as `(name, &Availability)`, in sorted (exact
+/// byte) name order.
+pub fn constants() -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    CONSTANTS
+        .iter()
+        .map(|(name, availability)| (*name, availability))
+}
+
 /// Whether `name` is a native constant available at `version` (case-sensitive).
 ///
 /// Available means present at `version`: introduced at or before it and not yet

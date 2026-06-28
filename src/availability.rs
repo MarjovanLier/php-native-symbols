@@ -15,7 +15,14 @@ pub struct Availability {
     pub deprecated: Option<PhpVersion>,
     /// Version the symbol was removed in, if ever.
     pub removed: Option<PhpVersion>,
-    /// Extension that provides the symbol: `"core"`, `"mbstring"`, `"pdo"`, ...
+    /// The deprecation successor when the symbol is deprecated, else `None`: a
+    /// function, a method, or a short construct hint. Editorial, not a machine
+    /// fact (sourced verbatim from the PHP manual and stub `@deprecated`
+    /// message); `Some` only where [`Availability::deprecated`] is `Some`.
+    pub replacement: Option<&'static str>,
+    /// Extension that provides the symbol, as the phpstorm-stubs folder name
+    /// with its case preserved: `"Core"`, `"standard"`, `"mbstring"`, `"json"`,
+    /// ...
     pub extension: &'static str,
     /// Whether the Zend engine has a special opcode for this function
     /// (meaningful for functions only).

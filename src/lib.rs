@@ -9,87 +9,21 @@
 //! stays in the table and is flagged via `deprecated`; a symbol removed at or
 //! before 7.4 is excluded entirely.
 //!
-//! This is the M0 scaffolding milestone: it fixes the public types and a few
-//! hand-written sample entries to prove the API shape. The full, generated
-//! tables (functions, constants, classes) arrive in later milestones.
+//! This is the M1 milestone: native function availability. The function table
+//! in `generated/functions.rs` is machine-written from pinned phpstorm-stubs
+//! data (see `tools/regenerate` and `NOTICE`). Constants and classes arrive in
+//! later milestones.
 
 #![forbid(unsafe_code)]
 
 mod availability;
+mod generated;
+mod query;
 mod version;
 
 pub use availability::{Availability, SymbolKind};
+pub use query::{function_availability, is_function, is_function_available};
 pub use version::{ParsePhpVersionError, PhpVersion};
-
-// ponytail: hand-written samples only; M1 replaces this with a generated,
-// name-sorted table looked up by binary search.
-const SAMPLE_FUNCTIONS: &[(&str, Availability)] = &[
-    (
-        "str_contains",
-        Availability {
-            added: Some(PhpVersion::minor(8, 0)),
-            deprecated: None,
-            removed: None,
-            extension: "core",
-            compiler_optimized: false,
-        },
-    ),
-    (
-        "mb_str_split",
-        Availability {
-            added: Some(PhpVersion::minor(7, 4)),
-            deprecated: None,
-            removed: None,
-            extension: "mbstring",
-            compiler_optimized: false,
-        },
-    ),
-    (
-        "strlen",
-        Availability {
-            // Predates the 7.4 floor, so always available within range.
-            added: None,
-            deprecated: None,
-            removed: None,
-            extension: "core",
-            compiler_optimized: true,
-        },
-    ),
-    (
-        "json_validate",
-        Availability {
-            added: Some(PhpVersion::minor(8, 3)),
-            deprecated: None,
-            removed: None,
-            extension: "json",
-            compiler_optimized: false,
-        },
-    ),
-    (
-        "utf8_encode",
-        Availability {
-            // Predates the floor but soft-deprecated within range: it stays in
-            // the table and is flagged, deprecation never excludes a symbol.
-            added: None,
-            deprecated: Some(PhpVersion::minor(8, 2)),
-            removed: None,
-            extension: "xml",
-            compiler_optimized: false,
-        },
-    ),
-];
-
-/// Look up the availability of a native function by exact name.
-///
-/// M0 covers only the hand-written sample set; name normalisation and the full
-/// generated table arrive with the functions milestone.
-#[must_use]
-pub fn function_availability(name: &str) -> Option<Availability> {
-    SAMPLE_FUNCTIONS
-        .iter()
-        .find(|(candidate, _)| *candidate == name)
-        .map(|(_, availability)| *availability)
-}
 
 #[cfg(test)]
 mod tests {
@@ -122,12 +56,5 @@ mod tests {
         assert!(PhpVersion::minor(7, 4) < PhpVersion::minor(8, 0));
         assert!(PhpVersion::minor(8, 0) < PhpVersion::minor(8, 1));
         assert!(PhpVersion::new(8, 1, 0) < PhpVersion::new(8, 1, 3));
-    }
-
-    #[test]
-    fn query_resolves_known_name_and_rejects_unknown() {
-        let known = function_availability("str_contains").expect("sample present");
-        assert_eq!(known.added, Some(PhpVersion::minor(8, 0)));
-        assert_eq!(function_availability("definitely_not_a_php_function"), None);
     }
 }

@@ -55,12 +55,15 @@ and `FILTER_VALIDATE_BOOLEAN` (predates the floor) are distinct entries.
 
 ## Status
 
-Functions, constants, classes (interfaces, enums) and methods are done:
-availability, deprecation, removal and an editorial deprecation `replacement`
-ship for all of them, with constant names handled case-sensitively and methods
-attributed declared-only. What remains is M5 hardening (extension-filter
-ergonomics, property tests, an optional crates.io publish). Progress lives in the
-checklists below; the engineering detail lives in [PLAN.md](PLAN.md).
+Complete and hardened for a 1.0 release. Functions, constants, classes
+(interfaces, enums) and methods all ship availability, deprecation, removal and
+an editorial deprecation `replacement`, with constant names handled
+case-sensitively and methods attributed declared-only. Every row carries a real
+extension; bulk iterators and `is_core_extension` let a consumer filter to a
+default build; a shared invariant suite and a `PhpVersion` proptest guard every
+table; and `cargo publish --dry-run` is green. The only remaining step is the
+optional, gated crates.io publish. Progress lives in the checklists below; the
+engineering detail lives in [PLAN.md](PLAN.md).
 
 ## Roadmap (build from the basics up)
 
@@ -106,11 +109,13 @@ the end of M1; full function lifecycle (deprecation, removal, replacement) at M2
 - [x] Tag a `0.4.0`
 
 ### M5 - Hardening and release
-- [ ] Extension tagging complete; consumers can filter to "core only"
-- [ ] Property tests over the whole table (sorted, unique, invariants hold)
-- [ ] `tools/regenerate` documented for adopting a new PHP release
-- [ ] README + NOTICE with full data provenance and licences
-- [ ] Publish to crates.io (optional)
+- [x] Extension tagging complete (no `unknown`); `is_core_extension` filters to a default build
+- [x] Bulk iterators: `functions()` / `constants()` / `classes()` / `methods()`
+- [x] Property and invariant tests over all four tables (sorted, unique, invariants hold) + `PhpVersion` proptest
+- [x] `tools/regenerate` documented for adopting a new PHP release
+- [x] README + NOTICE with full data provenance and licences
+- [x] `cargo publish --dry-run` green; tag a `1.0.0`
+- [ ] Publish to crates.io (optional, gated manual step)
 
 ## How a consumer uses it
 
@@ -176,15 +181,31 @@ at the call boundary, keeping the crate free of any toolchain dependency.
 
 ## Data provenance and licences
 
-Symbol facts are derived from upstream sources and cross-checked, never
-invented. The primary source is permissively licensed (Apache-2.0), so a
-permissive crate can be derived from it. A second source is used only to verify
-facts and surface disagreements; its curated arrays are never copied verbatim.
-Version numbers are facts and are not copyrightable.
+Symbol facts are derived from upstream sources and cross-checked, never invented.
+The full provenance, with pinned revisions, is in [`NOTICE`](NOTICE); in short:
 
-See [PLAN.md](PLAN.md) for the sourcing strategy, licence reasoning, and how to
-regenerate the tables. Provenance and source revisions are recorded in
-`NOTICE`.
+- **JetBrains phpstorm-stubs** (Apache-2.0): the primary, permissively licensed
+  source. Per-version reflection caches give presence (so `added`/`removed`) and,
+  for functions, the deprecation flag; the `Stubs*.json` metadata gives the
+  extension and the corroborating `@since`/`@removed`, and the declared methods.
+- **PHPCompatibility** (LGPL-3.0): cross-check only. Its `New*`/`Removed*` sniffs
+  verify `added` and `removed` for functions, constants and classes and fail
+  generation on any disagreement. Only the version numbers (facts, not
+  copyrightable) are read; its curated arrays and alternative text are never
+  copied.
+- **PHP-CS-Fixer** (MIT): the `@compiler_optimized` function set.
+- **The PHP manual**: the editorial authority behind every reviewed, hand-curated
+  value, the version overrides that resolve a cross-check disagreement, the
+  constant/class/method deprecation versions (which have no machine source), the
+  deprecation `replacement` labels, and the `is_core_extension` default-build set.
+  Methods have no PHPCompatibility sniff, so their availability rests on the
+  single authoritative stub `@since`/`@removed`.
+
+Reproducibility: each source is pinned to a specific revision recorded in
+`NOTICE` and in the generator. The tables are regenerated offline and every
+version is cross-checked or fact-locked, so the build is deterministic and uses
+no network or PHP. See [PLAN.md](PLAN.md) for the sourcing strategy and licence
+reasoning, and `tools/regenerate/README.md` for the regeneration runbook.
 
 ## Non-goals
 

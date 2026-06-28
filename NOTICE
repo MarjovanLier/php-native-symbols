@@ -76,22 +76,38 @@ PHPCompatibility  (verification only)
             generated tables. It never contributes shipped data, only a pass/fail
             verification.
 
-Editorial columns  (replacement, and constant deprecation)
+The PHP manual  (https://www.php.net/manual)  (editorial authority)
+  Used for: the authority behind every reviewed, hand-maintained value in the
+            generator. Three kinds:
+            1. Reviewed version overrides (the *_ADDED_OVERRIDES and
+               *_REMOVED_OVERRIDES lists and the artefact-extension allowlists):
+               PHP-manual facts that resolve a cache/cross-check disagreement,
+               for example odbc connection-string functions added 8.2 or the DOM
+               Level 3 classes removed 8.0. Each must agree with PHPCompatibility
+               where PHPCompatibility has an opinion; an override never overrules
+               it. These are version facts (not copyrightable), cross-checked, and
+               fact-locked in tests.
+            2. Curated deprecation versions for constants, classes and methods.
+               The reflection caches carry no usable deprecation flag for
+               constants or classes (and methods carry a flag with no version),
+               and PHPCompatibility ships no constant-, class- or method-
+               deprecation sniff, so these have neither a machine source nor a
+               second structured source: they are reviewed PHP-manual facts,
+               fact-locked, not cross-checked.
+            3. The is_core_extension default-build set: an editorial assumption
+               about which extensions a default PHP build ships, not a runtime
+               guarantee.
+
+Deprecation replacements  (editorial)
   Source:  the PHP manual deprecation pages
            (https://www.php.net/manual) and the phpstorm-stubs @deprecated
            docblock messages (Apache-2.0, the source above).
   Used for: the replacement field for every kind, a terse canonical label for a
             deprecation's single successor (a function, a method, or a short
-            construct hint), present only where one clear successor exists; and the
-            deprecated version itself for constants, classes and methods. The
-            reflection caches carry no usable deprecation flag for constants or
-            classes (and methods carry a flag with no version), and
-            PHPCompatibility ships no constant-, class- or method-deprecation
-            sniff, so those deprecation versions have neither a machine source nor
-            a second structured source: they are reviewed PHP-manual facts,
-            fact-locked in tests, like replacement. Hand-curated as our own short
-            labels, not copied prose; not cross-checked. PHPCompatibility's curated
-            alternative text is never used.
+            construct hint), present only where one clear successor exists.
+            Hand-curated as our own short labels, not copied prose; `Some` only
+            where the symbol is deprecated; not cross-checked. PHPCompatibility's
+            curated alternative text is never used.
 
 -------------------------------------------------------------------------------
 Regeneration (maintainers only; never needed by consumers):

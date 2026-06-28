@@ -6,28 +6,38 @@
 //!
 //! Inputs (read from local checkouts, no mandatory network):
 //!   * JetBrains phpstorm-stubs (Apache-2.0), pinned at [`PHPSTORM_STUBS_SHA`].
-//!     - per-version reflection caches `tests/cache/Reflection<ver>.json` give
-//!       the function name set for each version; `added` is derived by diffing
-//!       them against the 7.3 baseline.
+//!     - per-version reflection caches `tests/cache/Reflection<ver>.json` give,
+//!       for each version, the function name set (so `added` is derived by
+//!       diffing them against the 7.3 baseline and `removed` from the version a
+//!       function disappears) and each function's `isDeprecated` flag (so
+//!       `deprecated` is the first in-range version it reads true).
 //!     - `tests/cache/StubsFunctions.json` maps each function to its defining
 //!       stub folder (its extension) and its `@since` annotation.
 //!   * PHP-CS-Fixer (MIT), [`PHP_CS_FIXER_TAG`]: the `@compiler_optimized`
 //!     function set, embedded as [`COMPILER_OPTIMIZED`].
-//!   * PHPCompatibility (LGPL-3.0), mandatory: `NewFunctionsSniff` is parsed
-//!     transiently to verify `added` (every value must agree where it lists a
-//!     version) and `RemovedFunctionsSniff` to guard membership. Its arrays are
-//!     never copied into generated code; only facts (version numbers) are used.
-//!     Any unresolved disagreement fails generation, so no minimum-version ships
-//!     as a guess.
+//!   * PHPCompatibility (LGPL-3.0), mandatory version oracle: `NewFunctionsSniff`
+//!     verifies `added`; `RemovedFunctionsSniff` verifies both `removed` (its
+//!     `true`-version) and `deprecated` (its `false`-version) and guards
+//!     membership. Its arrays are never copied into generated code; only facts
+//!     (version numbers) are used. Where it states a version our value must
+//!     match it, so no override may overrule it: any unresolved disagreement
+//!     fails generation and nothing ships as a guess.
+//!   * PHP manual + the stub `@deprecated` message: the editorial source for
+//!     [`REPLACEMENTS`], the deprecation successor. Terse canonical labels only
+//!     (a function, method, or short construct hint), never copied prose, never
+//!     cross-checked (there is no second structured source).
 //!
 //! Artefact correction (PLAN section 7, "prefer phpstorm-stubs unless clearly
-//! wrong"): some extensions (zip, tidy, odbc) are only conditionally compiled
-//! into the reflection builds, so the diff places ancient functions in-range.
-//! Where an extension has no functions at the 7.4 floor build and phpstorm-stubs
-//! records no in-range `@since`, the function predates the floor and is set to
-//! `added: None`. A reviewed allowlist ([`ARTIFACT_EXTENSIONS`]) makes new such
-//! cases fail loudly rather than silently rewriting availability. Residual
-//! disagreements are resolved per symbol in [`ADDED_OVERRIDES`].
+//! wrong"): some extensions are only conditionally compiled into the reflection
+//! builds, so a function can appear in-range (mis-dating `added`) or vanish from
+//! a late build (looking removed). For `added`, an extension absent at the 7.4
+//! floor build with no in-range `@since` predates the floor -> `None`, gated by
+//! [`ARTIFACT_EXTENSIONS`]. For `removed`, a function that disappears but is
+//! PHPCompatibility-silent is a still-core build artefact -> `None`, gated by
+//! [`REMOVED_ARTIFACT_EXTENSIONS`]; a silent disappearance outside that allowlist
+//! fails generation so a human classifies it. Residual per-symbol resolutions
+//! live in [`ADDED_OVERRIDES`], [`REMOVED_OVERRIDES`] and [`DEPRECATED_OVERRIDES`]
+//! (all reviewed PHP-manual facts that must agree with PHPCompatibility).
 //!
 //! Usage:
 //!   cargo run -p regenerate -- <phpstorm-stubs checkout> <phpcompatibility checkout>
@@ -54,6 +64,10 @@ const PHP_CS_FIXER_TAG: &str = "v3.95.11";
 /// PHPCompatibility commit the cross-check is verified against. The checkout's
 /// HEAD is verified against this before generation (unless overridden).
 const PHPCOMPATIBILITY_SHA: &str = "d9a91bdf66d39fbd5c22272a592c8b63a1d0954f";
+
+/// Name (lowercase) -> a `major.minor` version, the shape of every parsed
+/// PHPCompatibility sniff map.
+type VersionMap = HashMap<String, (u8, u8)>;
 
 /// Absent baseline: functions present here predate the 7.4 coverage floor.
 const BASELINE: &str = "7.3";
@@ -86,6 +100,150 @@ const ADDED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[
     // built at the floor but only exposes these from 8.0, so the diff says 8.0.
     ("intltz_get_windows_id", None),
     ("intltz_get_id_for_windows_id", None),
+];
+
+/// Extensions whose functions disappear from the late reflection builds only
+/// because the extension was not compiled there, not because PHP removed them
+/// (they remain in core). A presence-shape removal for one of these, when
+/// PHPCompatibility is silent, is a build artefact -> `removed: None`. Reviewed:
+/// a silent disappearance for an extension not listed here fails generation, so
+/// a genuine future removal cannot slip through as "still available". Distinct
+/// from (and larger than) [`ARTIFACT_EXTENSIONS`] because more extensions drop
+/// out of the late builds than are mis-dated forward at the floor. `imap` and
+/// `pspell` are deliberately absent: they were genuinely unbundled at 8.4, so
+/// PHPCompatibility confirms them and they take the confirmed-removal path.
+const REMOVED_ARTIFACT_EXTENSIONS: &[&str] = &["exif", "ftp", "gettext", "odbc", "tidy", "zip"];
+
+/// Reviewed per-symbol `removed` overrides. `Some(v)` pins a removal version,
+/// `None` forces "not removed". Empty: every current removal is confirmed by
+/// PHPCompatibility's `true`-version and every silent disappearance is a reviewed
+/// build artefact, so none is needed. The slot exists so a future genuine
+/// removal PHPCompatibility has not yet recorded has a reviewed home (it must
+/// still agree with PHPCompatibility where the latter has an opinion).
+const REMOVED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[];
+
+/// Reviewed per-symbol `deprecated` overrides, each a PHP-manual fact that must
+/// equal PHPCompatibility's `false`-version. They fill two gaps the cache cannot
+/// date: a function already deprecated at the 7.4 floor (the cache clamps it to
+/// 7.4 or, for `each`, never flags it) and one whose extension is compiled too
+/// late to show the real flag (`odbc_result_all`). `Some(v)` pins the real
+/// version. Names are lowercase lookup keys.
+const DEPRECATED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[
+    // Deprecated before the 7.4 floor (PHP manual, corroborated by
+    // PHPCompatibility's false-version); all also removed at 8.0.
+    ("ldap_sort", Some((7, 0))),
+    ("create_function", Some((7, 2))),
+    ("each", Some((7, 2))),
+    ("gmp_random", Some((7, 2))),
+    ("jpeg2wbmp", Some((7, 2))),
+    ("png2wbmp", Some((7, 2))),
+    ("read_exif_data", Some((7, 2))),
+    ("fgetss", Some((7, 3))),
+    ("gzgetss", Some((7, 3))),
+    ("image2wbmp", Some((7, 3))),
+    ("mbereg", Some((7, 3))),
+    ("mbereg_match", Some((7, 3))),
+    ("mbereg_replace", Some((7, 3))),
+    ("mbereg_search", Some((7, 3))),
+    ("mbereg_search_getpos", Some((7, 3))),
+    ("mbereg_search_getregs", Some((7, 3))),
+    ("mbereg_search_init", Some((7, 3))),
+    ("mbereg_search_pos", Some((7, 3))),
+    ("mbereg_search_regs", Some((7, 3))),
+    ("mbereg_search_setpos", Some((7, 3))),
+    ("mberegi", Some((7, 3))),
+    ("mberegi_replace", Some((7, 3))),
+    ("mbregex_encoding", Some((7, 3))),
+    ("mbsplit", Some((7, 3))),
+    // odbc is compiled too late in the caches to show the 8.1 flag; deprecated
+    // 8.1 (PHP manual, PHPCompatibility false). Not removed (still core).
+    ("odbc_result_all", Some((8, 1))),
+];
+
+/// Functions PHPCompatibility records a `false`-version for that this crate
+/// deliberately does not model as deprecated, with the reviewed reason. The
+/// reconciliation gate skips them; each must keep `deprecated: None` so an
+/// exclusion can never hide a real deprecation.
+const DEPRECATION_EXCLUSIONS: &[(&str, &str)] = &[(
+    "dl",
+    "deprecation is SAPI-conditional and pre-floor (5.3); not modelled as a global function deprecation",
+)];
+
+/// Editorial deprecation successors, the only hand-curated values in the table.
+/// Sourced from the PHP manual deprecation page and the stub `@deprecated`
+/// message as terse canonical labels (a function, a method, or a short construct
+/// hint), never copied prose. Present only where a single clear successor exists;
+/// a deprecation with no single replacement is simply absent here. Each name
+/// must end up `deprecated: Some(..)` or generation fails (stale curation), and
+/// a successor may not be the deprecated function itself. Names are lowercase
+/// lookup keys.
+const REPLACEMENTS: &[(&str, &str)] = &[
+    ("create_function", "an anonymous function"),
+    ("date_sunrise", "date_sun_info()"),
+    ("date_sunset", "date_sun_info()"),
+    ("each", "a foreach loop"),
+    ("gmstrftime", "IntlDateFormatter::format()"),
+    ("image2wbmp", "imagewbmp()"),
+    ("is_real", "is_float()"),
+    ("mbereg", "mb_ereg()"),
+    ("mbereg_match", "mb_ereg_match()"),
+    ("mbereg_replace", "mb_ereg_replace()"),
+    ("mbereg_search", "mb_ereg_search()"),
+    ("mbereg_search_getpos", "mb_ereg_search_getpos()"),
+    ("mbereg_search_getregs", "mb_ereg_search_getregs()"),
+    ("mbereg_search_init", "mb_ereg_search_init()"),
+    ("mbereg_search_pos", "mb_ereg_search_pos()"),
+    ("mbereg_search_regs", "mb_ereg_search_regs()"),
+    ("mbereg_search_setpos", "mb_ereg_search_setpos()"),
+    ("mberegi", "mb_eregi()"),
+    ("mberegi_replace", "mb_eregi_replace()"),
+    ("mbregex_encoding", "mb_regex_encoding()"),
+    ("mbsplit", "mb_split()"),
+    ("mhash", "hash()"),
+    ("money_format", "NumberFormatter::formatCurrency()"),
+    ("mysqli_execute", "mysqli_stmt_execute()"),
+    ("read_exif_data", "exif_read_data()"),
+    ("restore_include_path", "ini_restore('include_path')"),
+    ("socket_set_timeout", "stream_set_timeout()"),
+    ("strftime", "IntlDateFormatter::format()"),
+    ("utf8_decode", "mb_convert_encoding()"),
+    ("utf8_encode", "mb_convert_encoding()"),
+    // postgres deprecated aliases -> canonical underscore spellings.
+    ("pg_clientencoding", "pg_client_encoding()"),
+    ("pg_cmdtuples", "pg_affected_rows()"),
+    ("pg_errormessage", "pg_last_error()"),
+    ("pg_fieldisnull", "pg_field_is_null()"),
+    ("pg_fieldname", "pg_field_name()"),
+    ("pg_fieldnum", "pg_field_num()"),
+    ("pg_fieldprtlen", "pg_field_prtlen()"),
+    ("pg_fieldsize", "pg_field_size()"),
+    ("pg_fieldtype", "pg_field_type()"),
+    ("pg_freeresult", "pg_free_result()"),
+    ("pg_getlastoid", "pg_last_oid()"),
+    ("pg_loclose", "pg_lo_close()"),
+    ("pg_locreate", "pg_lo_create()"),
+    ("pg_loexport", "pg_lo_export()"),
+    ("pg_loimport", "pg_lo_import()"),
+    ("pg_loopen", "pg_lo_open()"),
+    ("pg_loread", "pg_lo_read()"),
+    ("pg_loreadall", "pg_lo_read_all()"),
+    ("pg_lounlink", "pg_lo_unlink()"),
+    ("pg_lowrite", "pg_lo_write()"),
+    ("pg_numfields", "pg_num_fields()"),
+    ("pg_numrows", "pg_num_rows()"),
+    ("pg_result", "pg_fetch_result()"),
+    ("pg_setclientencoding", "pg_set_client_encoding()"),
+    // procedural zip API -> the ZipArchive class (stub @deprecated says so).
+    ("zip_close", "ZipArchive"),
+    ("zip_entry_close", "ZipArchive"),
+    ("zip_entry_compressedsize", "ZipArchive"),
+    ("zip_entry_compressionmethod", "ZipArchive"),
+    ("zip_entry_filesize", "ZipArchive"),
+    ("zip_entry_name", "ZipArchive"),
+    ("zip_entry_open", "ZipArchive"),
+    ("zip_entry_read", "ZipArchive"),
+    ("zip_open", "ZipArchive"),
+    ("zip_read", "ZipArchive"),
 ];
 
 /// PHP-CS-Fixer `NativeFunctionInvocationFixer` `@compiler_optimized` set:
@@ -139,13 +297,16 @@ const COMPILER_OPTIMIZED: &[&str] = &[
     "strval",
 ];
 
-/// One element of a phpstorm-stubs reflection cache. Only the discriminator and
-/// fully-qualified name are needed; every other field is ignored.
+/// One element of a phpstorm-stubs reflection cache: the discriminator, the
+/// fully-qualified name, and whether the build flagged it deprecated. Every
+/// other field is ignored.
 #[derive(Deserialize)]
 struct ReflEntry {
     #[serde(rename = "_type")]
     kind: String,
     id: Option<String>,
+    #[serde(rename = "isDeprecated", default)]
+    is_deprecated: bool,
 }
 
 /// One element of `StubsFunctions.json`: a function, the stub file that defines
@@ -171,6 +332,9 @@ struct StubInfo {
 struct Record {
     name: String,
     added: Option<(u8, u8)>,
+    deprecated: Option<(u8, u8)>,
+    removed: Option<(u8, u8)>,
+    replacement: Option<&'static str>,
     extension: String,
     compiler_optimized: bool,
 }
@@ -210,16 +374,35 @@ fn since_is_prefloor(since: &Option<String>) -> bool {
 
 /// The set of normalised function names in one reflection cache.
 fn function_ids(cache: &Path) -> Result<HashSet<String>, Box<dyn Error>> {
+    Ok(function_flags(cache)?.into_keys().collect())
+}
+
+/// Normalised function name -> whether the cache flags it deprecated, for one
+/// reflection cache. A name appearing more than once is deprecated if any entry
+/// is, so the union over duplicates never loses a flag.
+fn function_flags(cache: &Path) -> Result<HashMap<String, bool>, Box<dyn Error>> {
     let text =
         std::fs::read_to_string(cache).map_err(|e| format!("reading {}: {e}", cache.display()))?;
     let entries: Vec<ReflEntry> =
         serde_json::from_str(&text).map_err(|e| format!("parsing {}: {e}", cache.display()))?;
-    Ok(entries
-        .into_iter()
-        .filter(|e| e.kind == "PHPFunction")
-        .filter_map(|e| e.id)
-        .map(|id| normalise(&id))
-        .collect())
+    let mut map = HashMap::new();
+    for e in entries {
+        if e.kind != "PHPFunction" {
+            continue;
+        }
+        if let Some(id) = e.id {
+            *map.entry(normalise(&id)).or_insert(false) |= e.is_deprecated;
+        }
+    }
+    Ok(map)
+}
+
+/// The earliest in-range version whose cache flags `name` deprecated, or `None`.
+fn cache_deprecated(range_flags: &[(&str, HashMap<String, bool>)], name: &str) -> Option<(u8, u8)> {
+    range_flags
+        .iter()
+        .find(|(_, m)| m.get(name).copied().unwrap_or(false))
+        .map(|(v, _)| parse_mm(v))
 }
 
 /// Map every stub function to its extension (defining stub folder) and `@since`.
@@ -325,12 +508,17 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
-    // Name sets per version, then the union over the reported range.
+    // Per-version name->isDeprecated flags, the name sets derived from their
+    // keys, and the union over the reported range.
     let baseline = function_ids(&cache_path(&stubs, BASELINE))?;
-    let range_sets: Vec<(&str, HashSet<String>)> = RANGE
+    let range_flags: Vec<(&str, HashMap<String, bool>)> = RANGE
         .iter()
-        .map(|v| Ok((*v, function_ids(&cache_path(&stubs, v))?)))
+        .map(|v| Ok((*v, function_flags(&cache_path(&stubs, v))?)))
         .collect::<Result<_, Box<dyn Error>>>()?;
+    let range_sets: Vec<(&str, HashSet<String>)> = range_flags
+        .iter()
+        .map(|(v, m)| (*v, m.keys().cloned().collect()))
+        .collect();
     let union: BTreeSet<String> = range_sets
         .iter()
         .flat_map(|(_, s)| s.iter().cloned())
@@ -339,6 +527,21 @@ fn main() -> Result<(), Box<dyn Error>> {
     let stub = stub_info(&stubs.join("tests/cache/StubsFunctions.json"))?;
     let co_set: HashSet<&str> = COMPILER_OPTIMIZED.iter().copied().collect();
     let override_map: HashMap<&str, Option<(u8, u8)>> = ADDED_OVERRIDES.iter().copied().collect();
+    let removed_override_map: HashMap<&str, Option<(u8, u8)>> =
+        REMOVED_OVERRIDES.iter().copied().collect();
+    let dep_override_map: HashMap<&str, Option<(u8, u8)>> =
+        DEPRECATED_OVERRIDES.iter().copied().collect();
+    let replacement_map: HashMap<&str, &str> = REPLACEMENTS.iter().copied().collect();
+    let dep_excluded: HashSet<&str> = DEPRECATION_EXCLUSIONS.iter().map(|(n, _)| *n).collect();
+    let removed_artefact: HashSet<&str> = REMOVED_ARTIFACT_EXTENSIONS.iter().copied().collect();
+
+    // PHPCompatibility RemovedFunctionsSniff: the mandatory oracle for `removed`
+    // (its true-version) and removed-or-deprecated dating (its false-version).
+    let removed_sniff =
+        phpcompat.join("PHPCompatibility/Sniffs/FunctionUse/RemovedFunctionsSniff.php");
+    let removed_text = std::fs::read_to_string(&removed_sniff)
+        .map_err(|e| format!("reading {}: {e}", removed_sniff.display()))?;
+    let (php_removed, php_deprecated) = parse_removed_sniff(&removed_text)?;
 
     // Extensions with at least one function in the 7.4 floor build. An
     // extension absent here but present in range was only conditionally compiled.
@@ -348,13 +551,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         .filter_map(|id| stub.get(id).map(|i| i.extension.clone()))
         .collect();
 
-    // Diagnostics: classify presence shapes so removals (which M1 cannot yet
-    // represent) and any data anomaly are visible, not silent.
-    let mut removed_in_range = 0usize;
+    // Diagnostics and the named failure buckets the gates fill.
     let mut gaps = 0usize;
     let mut unmapped_extension: Vec<String> = Vec::new();
     let mut artefact_corrections: HashMap<String, usize> = HashMap::new();
     let mut overrides_applied = 0usize;
+    let mut removed_unconfirmed_artefact: Vec<String> = Vec::new();
+    let mut replacement_not_deprecated: Vec<String> = Vec::new();
+    let mut replacement_self: Vec<String> = Vec::new();
+    let mut deprecated_floor_unconfirmed: Vec<String> = Vec::new();
 
     let mut records = Vec::with_capacity(union.len());
     for name in &union {
@@ -399,19 +604,80 @@ fn main() -> Result<(), Box<dyn Error>> {
             None => corrected,
         };
 
-        // Presence-shape diagnostics across 7.3..8.5.
+        // Presence shape across the range.
         let in_range: Vec<bool> = range_sets.iter().map(|(_, s)| s.contains(name)).collect();
         let first = in_range.iter().position(|b| *b).unwrap_or(0);
         let last = in_range.iter().rposition(|b| *b).unwrap_or(0);
-        if !in_range[in_range.len() - 1] {
-            removed_in_range += 1;
-        } else if in_range[first..=last].contains(&false) {
+        let present_at_end = in_range[in_range.len() - 1];
+        if present_at_end && in_range[first..=last].contains(&false) {
             gaps += 1;
+        }
+
+        // removed: a function absent at 8.5 disappears at the range version just
+        // after its last appearance (the candidate). It ships removed only if a
+        // reviewed override pins it or PHPCompatibility confirms that candidate;
+        // a candidate PHPCompatibility is silent on is a still-core build
+        // artefact -> None, but only for a reviewed extension (else fail).
+        let removed = match removed_override_map.get(name.as_str()) {
+            Some(v) => *v,
+            None => {
+                if present_at_end {
+                    None
+                } else {
+                    let candidate = parse_mm(RANGE[last + 1]);
+                    match php_removed.get(name) {
+                        Some(&v) if v == candidate => Some(candidate),
+                        // mismatch is caught by the reverse gate below.
+                        Some(_) => None,
+                        None => {
+                            if !removed_artefact.contains(extension.as_str()) {
+                                removed_unconfirmed_artefact.push(format!(
+                                    "{name} (ext {extension}) disappears after {}.{} but \
+                                     PHPCompatibility is silent and {extension} is not a reviewed \
+                                     removed-artefact extension",
+                                    candidate.0, candidate.1
+                                ));
+                            }
+                            None
+                        }
+                    }
+                }
+            }
+        };
+
+        // deprecated: first in-range cache flag, or a reviewed override for the
+        // versions the cache cannot date. A cache value of exactly 7.4 that
+        // PHPCompatibility cannot confirm may really be pre-floor -> fail.
+        let cache_dep = cache_deprecated(&range_flags, name);
+        let (deprecated, dep_from_override) = match dep_override_map.get(name.as_str()) {
+            Some(v) => (*v, true),
+            None => (cache_dep, false),
+        };
+        if !dep_from_override && deprecated == Some((7, 4)) && !php_deprecated.contains_key(name) {
+            deprecated_floor_unconfirmed.push(name.clone());
+        }
+
+        // replacement: editorial, only where deprecated and a successor exists.
+        let replacement = if deprecated.is_some() {
+            replacement_map.get(name.as_str()).copied()
+        } else {
+            if replacement_map.contains_key(name.as_str()) {
+                replacement_not_deprecated.push(name.clone());
+            }
+            None
+        };
+        if let Some(r) = replacement {
+            if normalise(r.trim_end_matches("()")) == *name {
+                replacement_self.push(name.clone());
+            }
         }
 
         records.push(Record {
             name: name.clone(),
             added,
+            deprecated,
+            removed,
+            replacement,
             extension,
             compiler_optimized: co_set.contains(name.as_str()),
         });
@@ -461,26 +727,110 @@ fn main() -> Result<(), Box<dyn Error>> {
         .into());
     }
 
-    // Sibling guard: a function we ship must not be one PHPCompatibility records
-    // as removed at or before the 7.4 floor. (RemovedFunctionsSniff also feeds
-    // the `removed` column in M2. PHPCompatibility ships no DeprecatedFunctions
-    // sniff for functions at this ref, so deprecation is verified in M2.)
-    let removed_violations = cross_check_removed_membership(&phpcompat, &union)?;
-    if !removed_violations.is_empty() {
-        for v in &removed_violations {
-            eprintln!("  {v}");
+    // A silent disappearance outside the reviewed removed-artefact extensions
+    // must not become "still available"; it fails until a human classifies it.
+    fail_if_any(
+        &removed_unconfirmed_artefact,
+        "removed_unconfirmed_artefact",
+        "unreviewed silent disappearance(s); confirm in PHPCompatibility, add the extension to \
+         REMOVED_ARTIFACT_EXTENSIONS, or pin the removal in REMOVED_OVERRIDES",
+    )?;
+
+    let our: HashMap<&str, &Record> = records.iter().map(|r| (r.name.as_str(), r)).collect();
+
+    // removed_phpcompat_mismatch (reverse gate): every in-table function
+    // PHPCompatibility records removed in (7.4, 8.5] must carry that exact
+    // version. A function still present at 8.5 that PHPCompatibility says is gone
+    // is a source contradiction, not a guess to paper over.
+    let mut removed_mismatch: Vec<String> = Vec::new();
+    for (name, &ver) in &php_removed {
+        if let Some(r) = our.get(name.as_str()) {
+            if ver > (7, 4) && r.removed != Some(ver) {
+                removed_mismatch.push(format!(
+                    "removal mismatch: {name}: ours={:?} PHPCompatibility={ver:?}",
+                    r.removed
+                ));
+            }
+            // Membership floor guard: a function removed at or before 7.4 should
+            // not be in the table at all.
+            if ver <= (7, 4) {
+                removed_mismatch.push(format!(
+                    "membership: {name} shipped but PHPCompatibility removed it at {ver:?}"
+                ));
+            }
         }
-        return Err(format!(
-            "{} shipped function(s) are recorded removed at/before 7.4 by PHPCompatibility",
-            removed_violations.len()
-        )
-        .into());
     }
+    removed_mismatch.sort();
+    fail_if_any(
+        &removed_mismatch,
+        "removed_phpcompat_mismatch",
+        "removed/PHPCompatibility disagreement(s); inspect the source contradiction and resolve in \
+         REMOVED_OVERRIDES once reconciled",
+    )?;
+
+    // deprecated_phpcompat_mismatch: every in-table function with a
+    // PHPCompatibility false-version must carry that exact version, unless it is
+    // a reviewed exclusion (which must then stay None).
+    let mut deprecated_mismatch: Vec<String> = Vec::new();
+    for (name, &ver) in &php_deprecated {
+        let Some(r) = our.get(name.as_str()) else {
+            continue;
+        };
+        if dep_excluded.contains(name.as_str()) {
+            if r.deprecated.is_some() {
+                deprecated_mismatch.push(format!(
+                    "excluded {name} carries deprecated={:?}; an exclusion must stay None",
+                    r.deprecated
+                ));
+            }
+        } else if r.deprecated != Some(ver) {
+            deprecated_mismatch.push(format!(
+                "deprecation mismatch: {name}: ours={:?} PHPCompatibility false={ver:?}",
+                r.deprecated
+            ));
+        }
+    }
+    deprecated_mismatch.sort();
+    fail_if_any(
+        &deprecated_mismatch,
+        "deprecated_phpcompat_mismatch",
+        "deprecated/PHPCompatibility disagreement(s); pin the PHP-manual version in \
+         DEPRECATED_OVERRIDES or record a reviewed DEPRECATION_EXCLUSIONS reason",
+    )?;
+
+    // deprecated_floor_unconfirmed: a cache-derived 7.4 PHPCompatibility cannot
+    // confirm may really be pre-floor; force a reviewed decision.
+    deprecated_floor_unconfirmed.sort();
+    fail_if_any(
+        &deprecated_floor_unconfirmed,
+        "deprecated_floor_unconfirmed",
+        "cache-derived deprecated=7.4 with no PHPCompatibility false-version; confirm 7.4 or pin \
+         the real pre-floor version in DEPRECATED_OVERRIDES",
+    )?;
+
+    // Editorial replacement guards: a successor only where deprecated, and never
+    // the function itself.
+    replacement_not_deprecated.sort();
+    fail_if_any(
+        &replacement_not_deprecated,
+        "replacement_not_deprecated",
+        "REPLACEMENTS entr(y/ies) for function(s) that are not deprecated; remove the stale curation",
+    )?;
+    replacement_self.sort();
+    fail_if_any(
+        &replacement_self,
+        "replacement_self",
+        "REPLACEMENTS entr(y/ies) naming the deprecated function itself",
+    )?;
+
+    let removed_count = records.iter().filter(|r| r.removed.is_some()).count();
+    let deprecated_count = records.iter().filter(|r| r.deprecated.is_some()).count();
+    let replacement_count = records.iter().filter(|r| r.replacement.is_some()).count();
 
     let out_path =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../src/generated/functions.rs");
     std::fs::write(&out_path, render(&records, &actual_sha))?;
-    eprintln!("cross-check vs PHPCompatibility: 0 added disagreements, 0 removal violations");
+    eprintln!("cross-check vs PHPCompatibility: 0 added, 0 removed and 0 deprecated disagreements");
 
     eprintln!(
         "generated {} functions -> {}",
@@ -496,12 +846,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         records.iter().filter(|r| r.added.is_some()).count()
     );
     eprintln!("  compiler_optimized: {}", COMPILER_OPTIMIZED.len());
+    eprintln!(
+        "  removed: {removed_count}; deprecated: {deprecated_count}; replacement: {replacement_count}"
+    );
     let corrected_total: usize = artefact_corrections.values().sum();
     eprintln!(
         "  artefact corrections -> None: {corrected_total} {artefact_corrections:?}; \
-         reviewed overrides applied: {overrides_applied}"
+         reviewed added overrides applied: {overrides_applied}; presence gaps: {gaps}"
     );
-    eprintln!("  removed within range (handled in M2): {removed_in_range}; presence gaps: {gaps}");
     if !unmapped_extension.is_empty() {
         eprintln!(
             "  warning: {} function(s) had no stub extension mapping (used fallback): {:?}",
@@ -564,27 +916,58 @@ fn cross_check_new_functions(
     Ok(out)
 }
 
-/// Guard our membership rule with PHPCompatibility's `$removedFunctions`: a
-/// function we ship must not be recorded as removed at or before the 7.4 floor.
-fn cross_check_removed_membership(
-    phpcompat_dir: &Path,
-    union: &BTreeSet<String>,
-) -> Result<Vec<String>, Box<dyn Error>> {
-    let sniff = phpcompat_dir.join("PHPCompatibility/Sniffs/FunctionUse/RemovedFunctionsSniff.php");
-    let text =
-        std::fs::read_to_string(&sniff).map_err(|e| format!("reading {}: {e}", sniff.display()))?;
-    let removed = parse_version_array(&text);
+/// Return one `Err` if `items` is non-empty, printing each item first; the
+/// `category` names the failing gate so a regen failure is quick to classify.
+fn fail_if_any(items: &[String], category: &str, advice: &str) -> Result<(), Box<dyn Error>> {
+    if items.is_empty() {
+        return Ok(());
+    }
+    for i in items {
+        eprintln!("  {i}");
+    }
+    Err(format!("{} {category}: {advice}", items.len()).into())
+}
 
-    let mut out = Vec::new();
-    for (name, removed_ver) in &removed {
-        if *removed_ver <= (7, 4) && union.contains(name) {
-            out.push(format!(
-                "removal violation: {name} shipped but PHPCompatibility removed it at {removed_ver:?}"
-            ));
+/// Parse PHPCompatibility's `RemovedFunctionsSniff` `$removedFunctions` into
+/// (name -> removal version, name -> deprecation version): the version mapped to
+/// `true` is the removal, the version mapped to `false` the deprecation. Names
+/// lowercased. Sanity sentinels guard against silent parser drift.
+fn parse_removed_sniff(text: &str) -> Result<(VersionMap, VersionMap), Box<dyn Error>> {
+    let mut removed = HashMap::new();
+    let mut deprecated = HashMap::new();
+    let mut current: Option<String> = None;
+    for line in text.lines() {
+        let trimmed = line.trim();
+        if let Some(name) = entry_name(trimmed) {
+            current = Some(name.to_ascii_lowercase());
+        } else if let Some(name) = &current {
+            if let Some(ver) = true_version(trimmed) {
+                removed.entry(name.clone()).or_insert(ver);
+            }
+            if let Some(ver) = false_version(trimmed) {
+                deprecated.entry(name.clone()).or_insert(ver);
+            }
         }
     }
-    out.sort();
-    Ok(out)
+    for (name, want_removed, want_deprecated) in [
+        ("create_function", (8, 0), (7, 2)),
+        ("money_format", (8, 0), (7, 4)),
+        ("each", (8, 0), (7, 2)),
+    ] {
+        if removed.get(name) != Some(&want_removed)
+            || deprecated.get(name) != Some(&want_deprecated)
+        {
+            return Err(format!(
+                "PHPCompatibility RemovedFunctionsSniff sanity check failed: {name} parsed as \
+                 removed={:?} deprecated={:?}, expected {want_removed:?}/{want_deprecated:?}; the \
+                 array format may have drifted",
+                removed.get(name),
+                deprecated.get(name)
+            )
+            .into());
+        }
+    }
+    Ok((removed, deprecated))
 }
 
 /// Parse a PHPCompatibility `'name' => [ 'X.Y' => true/false, ... ]` array into
@@ -631,6 +1014,20 @@ fn true_version(line: &str) -> Option<(u8, u8)> {
     }
 }
 
+/// `'7.2' => false,` -> `Some((7, 2))`; anything else -> `None`. In
+/// RemovedFunctionsSniff the `false`-mapped version is the deprecation version.
+fn false_version(line: &str) -> Option<(u8, u8)> {
+    let rest = line.strip_prefix('\'')?;
+    let (ver, after) = rest.split_once('\'')?;
+    let (major, minor) = ver.split_once('.')?;
+    let mm = (major.parse().ok()?, minor.parse().ok()?);
+    if after.contains("=>") && after.contains("false") {
+        Some(mm)
+    } else {
+        None
+    }
+}
+
 /// Render the generated source.
 fn render(records: &[Record], sha: &str) -> String {
     let mut out = String::new();
@@ -639,11 +1036,15 @@ fn render(records: &[Record], sha: &str) -> String {
          //\n\
          // Native PHP function availability for PHP 7.4 through 8.5.\n\
          //\n\
-         // Function names and per-version presence: JetBrains phpstorm-stubs\n\
-         // (Apache-2.0) @ {sha}, reflection caches tests/cache/Reflection*.json.\n\
+         // Names, per-version presence, isDeprecated and (so) added/deprecated/\n\
+         // removed: JetBrains phpstorm-stubs (Apache-2.0) @ {sha}, reflection\n\
+         // caches tests/cache/Reflection*.json, cross-checked against\n\
+         // PHPCompatibility (LGPL-3.0, version facts only, never copied).\n\
          // Extensions and @since: the same repo's tests/cache/StubsFunctions.json.\n\
          // compiler_optimized: PHP-CS-Fixer (MIT) NativeFunctionInvocationFixer\n\
          // @compiler_optimized set @ {tag}.\n\
+         // replacement: editorial, from the PHP manual and stub @deprecated\n\
+         // messages (terse labels, never copied prose); see NOTICE.\n\
          //\n\
          // Regenerate with `cargo run -p regenerate --\n\
          // <phpstorm-stubs checkout> <phpcompatibility checkout>`; see NOTICE and\n\
@@ -658,13 +1059,23 @@ fn render(records: &[Record], sha: &str) -> String {
         n = records.len(),
     ));
     for r in records {
-        let added = match r.added {
+        let version = |v: Option<(u8, u8)>| match v {
             Some((major, minor)) => format!("Some(PhpVersion::minor({major}, {minor}))"),
             None => "None".to_string(),
         };
+        let replacement = match r.replacement {
+            Some(s) => format!("Some({s:?})"),
+            None => "None".to_string(),
+        };
         out.push_str(&format!(
-            "    ({:?}, Availability {{ added: {}, deprecated: None, removed: None, replacement: None, extension: {:?}, compiler_optimized: {} }}),\n",
-            r.name, added, r.extension, r.compiler_optimized,
+            "    ({:?}, Availability {{ added: {}, deprecated: {}, removed: {}, replacement: {}, extension: {:?}, compiler_optimized: {} }}),\n",
+            r.name,
+            version(r.added),
+            version(r.deprecated),
+            version(r.removed),
+            replacement,
+            r.extension,
+            r.compiler_optimized,
         ));
     }
     out.push_str("];\n");

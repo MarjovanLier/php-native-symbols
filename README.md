@@ -55,10 +55,12 @@ and `FILTER_VALIDATE_BOOLEAN` (predates the floor) are distinct entries.
 
 ## Status
 
-Functions and constants are done: availability, deprecation, removal and an
-editorial deprecation `replacement` ship for both, with constant names handled
-case-sensitively. Next is classes, interfaces, enums and methods. Progress lives
-in the checklists below; the engineering detail lives in [PLAN.md](PLAN.md).
+Functions, constants, classes (interfaces, enums) and methods are done:
+availability, deprecation, removal and an editorial deprecation `replacement`
+ship for all of them, with constant names handled case-sensitively and methods
+attributed declared-only. What remains is M5 hardening (extension-filter
+ergonomics, property tests, an optional crates.io publish). Progress lives in the
+checklists below; the engineering detail lives in [PLAN.md](PLAN.md).
 
 ## Roadmap (build from the basics up)
 
@@ -98,9 +100,10 @@ the end of M1; full function lifecycle (deprecation, removal, replacement) at M2
 - [x] Tag a `0.3.0`
 
 ### M4 - Classes, interfaces, enums and methods
-- [ ] `class_availability(name)` (case-insensitive)
-- [ ] `method_availability(class, method)`
-- [ ] Facts: WeakReference=7.4, WeakMap=8.0, Fiber=8.1, Random\Randomizer=8.2
+- [x] `class_availability(name)` (case-insensitive) + `is_class` / `is_class_available` / `is_class_deprecated_at`
+- [x] `method_availability(class, method)` (declared-only) + `is_method` / `is_method_available` / `is_method_deprecated_at`
+- [x] Facts: WeakReference=7.4, WeakMap=8.0, Fiber=8.1, Random\Randomizer=8.2; Randomizer::getFloat=8.3
+- [x] Tag a `0.4.0`
 
 ### M5 - Hardening and release
 - [ ] Extension tagging complete; consumers can filter to "core only"
@@ -149,6 +152,23 @@ if is_constant_available("FILTER_VALIDATE_BOOL", PhpVersion::new(8, 0, 0)) {
 if let Some(a) = constant_availability("\\PHP_INT_MAX") {
     let _ = (a.added, a.deprecated, a.removed, a.extension);
 }
+```
+
+Classes (and interfaces and enums) are case-insensitive; methods are looked up by
+class and method name and are **declared-only** (a class is not credited with
+methods it merely inherits):
+
+```rust
+use php_native_symbols::{class_availability, method_availability, is_class_available, PhpVersion};
+
+if is_class_available("Random\\Randomizer", PhpVersion::new(8, 2, 0)) {
+    // ... the Randomizer class exists at 8.2
+}
+// Randomizer::getFloat was added later than the class itself (8.3).
+if let Some(a) = method_availability("Random\\Randomizer", "getFloat") {
+    let _ = a.added; // Some(8.3)
+}
+let _ = class_availability("\\weakreference"); // case-insensitive, leading `\` stripped
 ```
 
 A consumer with its own version type converts it to this crate's `PhpVersion`

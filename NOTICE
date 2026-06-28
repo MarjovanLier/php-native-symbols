@@ -13,13 +13,18 @@ JetBrains phpstorm-stubs  (primary data source)
   Licence: Apache-2.0
   Source:  https://github.com/JetBrains/phpstorm-stubs
   Pinned:  commit 7f1c9cada07266d488698b6c9128503d6c94e58b
-  Used for: native function and constant names and per-version presence
-            (derived by diffing the per-version reflection caches
-            tests/cache/Reflection*.json: presence gives added and removed) plus,
-            for functions, the isDeprecated flag (gives deprecated). Each
-            symbol's extension and corroborating @since/@removed come from
-            tests/cache/StubsFunctions.json and tests/cache/StubsConstants.json.
-            The reflection caches carry no isDeprecated flag for constants.
+  Used for: native function, constant and class/interface/enum names and
+            per-version presence (derived by diffing the per-version reflection
+            caches tests/cache/Reflection*.json: presence gives added and
+            removed) plus, for functions, the isDeprecated flag (gives
+            deprecated). Each symbol's extension and corroborating @since/@removed
+            come from tests/cache/StubsFunctions.json, StubsConstants.json and
+            StubsClasses.json. Methods are the declared methods arrays in
+            StubsClasses.json (the declared class body only, never the
+            inherited-inclusive reflection method list); a method's added is its
+            @since or its class's added, its removed its @removed capped by the
+            class's removal. The reflection caches carry no isDeprecated flag for
+            constants or classes.
   No NOTICE file is distributed with phpstorm-stubs at the pinned commit.
 
 PHP-CS-Fixer  (compiler_optimized flag)
@@ -60,28 +65,33 @@ PHPCompatibility  (verification only)
             NewFunctionsSniff verifies added; RemovedFunctionsSniff verifies
             removed (its true version) and deprecated (its false version) and
             guards membership. For constants, NewConstantsSniff verifies added
-            and RemovedConstantsSniff verifies removed and guards membership;
-            PHPCompatibility ships no constant-deprecation sniff, so constant
-            deprecation is not cross-checked here. Only the version numbers
-            (facts) are read; no PHPCompatibility array, code, or curated
-            alternative text is copied into this crate or its generated tables.
-            It never contributes shipped data, only a pass/fail verification.
+            and RemovedConstantsSniff verifies removed and guards membership. For
+            classes, NewClassesSniff verifies added and RemovedClassesSniff
+            verifies removed and guards membership. PHPCompatibility ships no
+            constant-deprecation, class-deprecation or method sniff, so constant
+            and class deprecation and all method availability are not cross-checked
+            here (methods rest on the single authoritative stub @since/@removed).
+            Only the version numbers (facts) are read; no PHPCompatibility array,
+            code, or curated alternative text is copied into this crate or its
+            generated tables. It never contributes shipped data, only a pass/fail
+            verification.
 
 Editorial columns  (replacement, and constant deprecation)
   Source:  the PHP manual deprecation pages
            (https://www.php.net/manual) and the phpstorm-stubs @deprecated
            docblock messages (Apache-2.0, the source above).
-  Used for: the replacement field for both kinds, a terse canonical label for a
+  Used for: the replacement field for every kind, a terse canonical label for a
             deprecation's single successor (a function, a method, or a short
-            construct hint), present only where one clear successor exists; and,
-            for constants only, the deprecated version itself. The reflection
-            caches carry no constant deprecation flag and PHPCompatibility ships
-            no constant-deprecation sniff, so constant deprecation versions have
-            neither a machine source nor a second structured source: they are
-            reviewed PHP-manual facts, fact-locked in tests, like replacement.
-            Hand-curated as our own short labels, not copied prose; not
-            cross-checked. PHPCompatibility's curated alternative text is never
-            used.
+            construct hint), present only where one clear successor exists; and the
+            deprecated version itself for constants, classes and methods. The
+            reflection caches carry no usable deprecation flag for constants or
+            classes (and methods carry a flag with no version), and
+            PHPCompatibility ships no constant-, class- or method-deprecation
+            sniff, so those deprecation versions have neither a machine source nor
+            a second structured source: they are reviewed PHP-manual facts,
+            fact-locked in tests, like replacement. Hand-curated as our own short
+            labels, not copied prose; not cross-checked. PHPCompatibility's curated
+            alternative text is never used.
 
 -------------------------------------------------------------------------------
 Regeneration (maintainers only; never needed by consumers):

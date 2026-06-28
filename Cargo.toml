@@ -15,5 +15,11 @@ exclude = [".claude", ".codex", ".github"]
 # The library has no runtime dependencies. The offline table generator is a
 # separate workspace member (tools/regenerate) with its own dependencies and is
 # never part of the published crate.
+
+[dev-dependencies]
+# Test-only: property tests for PhpVersion parsing and ordering. Not a runtime
+# dependency and not part of the published crate's build for consumers.
+proptest = "1"
+
 [workspace]
 members = ["tools/regenerate"]

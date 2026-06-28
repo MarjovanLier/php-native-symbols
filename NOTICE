@@ -1,0 +1,67 @@
+php-native-symbols
+Copyright the php-native-symbols authors.
+
+This product is licensed under your choice of MIT or Apache-2.0 (see
+LICENSE-MIT and LICENSE-APACHE). The committed lookup tables under
+src/generated/ are machine-written from the third-party sources below by the
+offline generator in tools/regenerate. Version numbers are facts and are not
+copyrightable; the attributions here cover the selection and arrangement that
+the permissive sources allow us to redistribute.
+
+-------------------------------------------------------------------------------
+JetBrains phpstorm-stubs  (primary data source)
+  Licence: Apache-2.0
+  Source:  https://github.com/JetBrains/phpstorm-stubs
+  Pinned:  commit 7f1c9cada07266d488698b6c9128503d6c94e58b
+  Used for: native function names, per-version presence (derived by diffing the
+            per-version reflection caches tests/cache/Reflection*.json) and each
+            function's extension and @since (tests/cache/StubsFunctions.json).
+  No NOTICE file is distributed with phpstorm-stubs at the pinned commit.
+
+PHP-CS-Fixer  (compiler_optimized flag)
+  Licence: MIT
+  Copyright (c) Fabien Potencier <fabien@symfony.com> and
+                Dariusz Ruminski <dariusz.ruminski@gmail.com>
+  Source:  https://github.com/PHP-CS-Fixer/PHP-CS-Fixer
+  Pinned:  tag v3.95.11
+  Used for: the @compiler_optimized function set from
+            src/Fixer/FunctionNotation/NativeFunctionInvocationFixer.php,
+            embedded as a constant in tools/regenerate and overlaid as the
+            compiler_optimized flag.
+  MIT permission notice (carried per the MIT licence):
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the "Software"),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+
+PHPCompatibility  (verification only)
+  Licence: LGPL-3.0
+  Source:  https://github.com/PHPCompatibility/PHPCompatibility
+  Pinned:  develop commit d9a91bdf66d39fbd5c22272a592c8b63a1d0954f
+  Used for: cross-checking the cache-derived minimum versions only
+            (NewFunctionsSniff and RemovedFunctionsSniff). No PHPCompatibility
+            array or code is copied into this crate or its generated tables; it
+            never contributes shipped data, only a pass/fail verification.
+
+-------------------------------------------------------------------------------
+Regeneration (maintainers only; never needed by consumers):
+
+  cargo run -p regenerate -- <phpstorm-stubs checkout> <phpcompatibility checkout>
+
+The generator verifies the phpstorm-stubs checkout is at the pinned commit,
+fails on any unresolved disagreement with PHPCompatibility, and rewrites
+src/generated/functions.rs. See PLAN.md for the full pipeline.

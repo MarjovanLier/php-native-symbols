@@ -1,11 +1,19 @@
 [package]
 name = "php-native-symbols"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.70"
 license = "MIT OR Apache-2.0"
 description = "Version-availability data for PHP's native functions, constants and classes."
 repository = "https://github.com/MarjovanLier/php-native-symbols"
 readme = "README.md"
+# Developer-only tooling, never part of the published crate.
+exclude = [".claude", ".codex", ".github"]
 
 [dependencies]
+
+# The library has no runtime dependencies. The offline table generator is a
+# separate workspace member (tools/regenerate) with its own dependencies and is
+# never part of the published crate.
+[workspace]
+members = ["tools/regenerate"]

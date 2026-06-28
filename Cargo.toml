@@ -1,6 +1,6 @@
 [package]
 name = "php-native-symbols"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 rust-version = "1.70"
 license = "MIT OR Apache-2.0"
@@ -9,9 +9,9 @@ repository = "https://github.com/MarjovanLier/php-native-symbols"
 readme = "README.md"
 keywords = ["php", "version", "compatibility", "availability", "static-analysis"]
 categories = ["development-tools"]
-# Developer-only tooling and notes, never part of the published crate. The
-# generated tables under src/generated/ are the shipped data and are packaged.
-exclude = [".claude", ".codex", ".github", "tools", "PLAN.md"]
+# Developer-only tooling, never part of the published crate. The generated
+# tables under src/generated/ are the shipped data and are packaged.
+exclude = [".claude", ".codex", ".github", "tools"]
 
 [dependencies]
 

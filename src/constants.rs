@@ -46,6 +46,17 @@ pub fn constants() -> impl Iterator<Item = (&'static str, &'static Availability)
         .map(|(name, availability)| (*name, availability))
 }
 
+/// Iterate the names of every native constant available at `version`
+/// (case-sensitive), in sorted order: the per-version constant list. Included
+/// when introduced at or before `version` and not yet removed (constants
+/// predating the 7.4 floor are included). Intended for the supported range
+/// (7.4 to 8.5).
+pub fn constants_available_at(version: PhpVersion) -> impl Iterator<Item = &'static str> {
+    constants()
+        .filter(move |(_, availability)| availability.is_available_at(version))
+        .map(|(name, _)| name)
+}
+
 /// Whether `name` is a native constant available at `version` (case-sensitive).
 ///
 /// Available means present at `version`: introduced at or before it and not yet
@@ -76,6 +87,17 @@ pub fn is_constant_deprecated_at(name: &str, version: PhpVersion) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn constants_available_at_lists_the_version_set() {
+        use std::collections::HashSet;
+        let at_80: HashSet<&str> = constants_available_at(PhpVersion::minor(8, 0)).collect();
+        assert!(at_80.contains("FILTER_VALIDATE_BOOL")); // added 8.0
+        assert!(at_80.contains("JSON_THROW_ON_ERROR")); // predates the 7.4 floor
+        let at_74: HashSet<&str> = constants_available_at(PhpVersion::minor(7, 4)).collect();
+        assert!(!at_74.contains("FILTER_VALIDATE_BOOL")); // added 8.0
+        assert!(at_74.contains("JSON_THROW_ON_ERROR")); // predates the floor
+    }
 
     #[test]
     fn spot_checks_lock_known_added_versions() {

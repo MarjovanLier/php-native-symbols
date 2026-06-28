@@ -43,6 +43,17 @@ pub fn functions() -> impl Iterator<Item = (&'static str, &'static Availability)
         .map(|(name, availability)| (*name, availability))
 }
 
+/// Iterate the names of every native function available at `version`, in sorted
+/// order: the per-version function list. A function is included when it is
+/// introduced at or before `version` and not yet removed (functions predating
+/// the 7.4 floor are included). Intended for versions in the supported range
+/// (7.4 to 8.5).
+pub fn functions_available_at(version: PhpVersion) -> impl Iterator<Item = &'static str> {
+    functions()
+        .filter(move |(_, availability)| availability.is_available_at(version))
+        .map(|(name, _)| name)
+}
+
 /// Whether `name` is a native function available at `version`.
 ///
 /// Available means present at `version`: introduced at or before it (`added` is
@@ -75,6 +86,20 @@ pub fn is_function_deprecated_at(name: &str, version: PhpVersion) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn functions_available_at_lists_the_version_set() {
+        use std::collections::HashSet;
+        let at_80: HashSet<&str> = functions_available_at(PhpVersion::minor(8, 0)).collect();
+        assert!(at_80.contains("str_contains")); // added 8.0
+        assert!(at_80.contains("strlen")); // predates the 7.4 floor
+        assert!(!at_80.contains("array_find")); // added 8.4
+        assert!(!at_80.contains("create_function")); // removed 8.0
+        let at_74: HashSet<&str> = functions_available_at(PhpVersion::minor(7, 4)).collect();
+        assert!(at_74.contains("mb_str_split")); // added 7.4
+        assert!(!at_74.contains("str_contains")); // added 8.0
+        assert!(at_74.contains("create_function")); // present at 7.4, removed 8.0
+    }
 
     #[test]
     fn spot_checks_lock_known_added_versions() {

@@ -55,67 +55,30 @@ and `FILTER_VALIDATE_BOOLEAN` (predates the floor) are distinct entries.
 
 ## Status
 
-Complete and hardened for a 1.0 release. Functions, constants, classes
+Released: **v1.0.0 is on [crates.io](https://crates.io/crates/php-native-symbols)**
+([docs](https://docs.rs/php-native-symbols)). Functions, constants, classes
 (interfaces, enums) and methods all ship availability, deprecation, removal and
 an editorial deprecation `replacement`, with constant names handled
 case-sensitively and methods attributed declared-only. Every row carries a real
 extension; bulk iterators and `is_core_extension` let a consumer filter to a
-default build; a shared invariant suite and a `PhpVersion` proptest guard every
-table; and `cargo publish --dry-run` is green. The only remaining step is the
-optional, gated crates.io publish. Progress lives in the checklists below; the
-engineering detail lives in [PLAN.md](PLAN.md).
+default build; and a shared invariant suite plus a `PhpVersion` proptest guard
+every table. The milestone history is in the checklists below; provenance is in
+[`NOTICE`](NOTICE) and the regeneration runbook in
+[`tools/regenerate/README.md`](tools/regenerate/README.md).
 
-## Roadmap (build from the basics up)
+## Milestones (build history)
 
-Each milestone is shippable on its own. The function-availability MVP lands at
-the end of M1; full function lifecycle (deprecation, removal, replacement) at M2.
+Built bottom-up; each version shipped on its own (git tags `v0.1.0`-`v1.0.0`):
 
-### M0 - Scaffolding
-- [x] `cargo init --lib`, crate name `php-native-symbols`, edition 2021
-- [x] `PhpVersion` type: `{ major, minor, patch }`, `Ord`, const ctors, `FromStr` ("8.1" / "8.1.3")
-- [x] `Availability` struct and a `SymbolKind` enum
-- [x] `#![forbid(unsafe_code)]`, MSRV documented, CI running `fmt` + `clippy` + `test`
-- [x] A handful of hand-written entries so the API compiles and is exercised by a test
-
-### M1 - Functions MVP (first usable release)
-- [x] Decide and pin the data source (see PLAN for the sourcing strategy)
-- [x] Offline generator that emits `generated/functions.rs` from the pinned source
-- [x] `function_availability(name)` + `is_function(name)` + `is_function_available(name, v)`
-- [x] Case-insensitive function-name lookup, strips a leading `\`
-- [x] O(1)/O(log n) lookup (phf or sorted static slice + binary search)
-- [x] Spot-check tests locking real facts (str_contains=8.0, mb_str_split=7.4, ...)
-- [x] `compiler_optimized` flag populated from the PHP CS Fixer set
-- [x] Integration snippet in the README and PLAN
-- [x] Tag a `0.1.0`
-
-### M2 - Function deprecation, removal and replacement
-- [x] `deprecated` / `removed` populated for functions
-- [x] `replacement` populated for deprecated functions (successor, or None)
-- [x] `is_function_deprecated_at(name, v)`
-- [x] Facts: create_function removed 8.0, money_format removed 8.0, utf8_encode deprecated 8.2 in favour of mb_convert_encoding
-- [x] Invariant tests: `added <= deprecated <= removed` where present; `replacement` only where `deprecated`
-- [x] Tag a `0.2.0`
-
-### M3 - Constants
-- [x] `generated/constants.rs` from the same pipeline
-- [x] `constant_availability(name)` (case-SENSITIVE names) + `is_constant` / `is_constant_available` / `is_constant_deprecated_at`
-- [x] Facts: FILTER_VALIDATE_BOOL=8.0, E_STRICT deprecated 8.4; JSON_THROW_ON_ERROR predates the 7.4 floor (added: None)
-- [x] Tag a `0.3.0`
-
-### M4 - Classes, interfaces, enums and methods
-- [x] `class_availability(name)` (case-insensitive) + `is_class` / `is_class_available` / `is_class_deprecated_at`
-- [x] `method_availability(class, method)` (declared-only) + `is_method` / `is_method_available` / `is_method_deprecated_at`
-- [x] Facts: WeakReference=7.4, WeakMap=8.0, Fiber=8.1, Random\Randomizer=8.2; Randomizer::getFloat=8.3
-- [x] Tag a `0.4.0`
-
-### M5 - Hardening and release
-- [x] Extension tagging complete (no `unknown`); `is_core_extension` filters to a default build
-- [x] Bulk iterators: `functions()` / `constants()` / `classes()` / `methods()`
-- [x] Property and invariant tests over all four tables (sorted, unique, invariants hold) + `PhpVersion` proptest
-- [x] `tools/regenerate` documented for adopting a new PHP release
-- [x] README + NOTICE with full data provenance and licences
-- [x] `cargo publish --dry-run` green; tag a `1.0.0`
-- [ ] Publish to crates.io (optional, gated manual step)
+- **0.1.0** (M0/M1) - scaffolding (`PhpVersion`, `Availability`) and the
+  functions MVP: `function_availability` and the `is_function*` queries over a
+  generated, cross-checked table, plus the `compiler_optimized` flag.
+- **0.2.0** (M2) - function deprecation, removal and an editorial `replacement`.
+- **0.3.0** (M3) - constants, with case-sensitive lookup.
+- **0.4.0** (M4) - classes, interfaces, enums and declared-only methods.
+- **1.0.0** (M5) - hardening and release: a real extension on every row,
+  `is_core_extension`, bulk iterators, a cross-table invariant suite and a
+  `PhpVersion` proptest, a documented regeneration runbook, and full provenance.
 
 ## How a consumer uses it
 
@@ -176,6 +139,21 @@ if let Some(a) = method_availability("Random\\Randomizer", "getFloat") {
 let _ = class_availability("\\weakreference"); // case-insensitive, leading `\` stripped
 ```
 
+To list everything available at a version (the per-version symbol set), use the
+bulk helpers; each yields just the names, lazily:
+
+```rust
+use php_native_symbols::{functions_available_at, methods_available_at, PhpVersion};
+
+let v = PhpVersion::new(8, 1, 0);
+let funcs: Vec<&str> = functions_available_at(v).collect(); // every function in 8.1
+// constants_available_at(v) and classes_available_at(v) mirror this; methods
+// yield (class, method) pairs.
+for (class, method) in methods_available_at(v) {
+    let _ = (class, method);
+}
+```
+
 A consumer with its own version type converts it to this crate's `PhpVersion`
 at the call boundary, keeping the crate free of any toolchain dependency.
 
@@ -204,8 +182,8 @@ The full provenance, with pinned revisions, is in [`NOTICE`](NOTICE); in short:
 Reproducibility: each source is pinned to a specific revision recorded in
 `NOTICE` and in the generator. The tables are regenerated offline and every
 version is cross-checked or fact-locked, so the build is deterministic and uses
-no network or PHP. See [PLAN.md](PLAN.md) for the sourcing strategy and licence
-reasoning, and `tools/regenerate/README.md` for the regeneration runbook.
+no network or PHP. See [`tools/regenerate/README.md`](tools/regenerate/README.md)
+for the regeneration runbook.
 
 ## Non-goals
 

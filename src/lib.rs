@@ -35,15 +35,18 @@ mod version;
 
 pub use availability::{Availability, SymbolKind};
 pub use classes::{
-    class_availability, classes, is_class, is_class_available, is_class_deprecated_at, is_method,
-    is_method_available, is_method_deprecated_at, method_availability, methods,
+    class_availability, classes, classes_available_at, is_class, is_class_available,
+    is_class_deprecated_at, is_method, is_method_available, is_method_deprecated_at,
+    method_availability, methods, methods_available_at,
 };
 pub use constants::{
-    constant_availability, constants, is_constant, is_constant_available, is_constant_deprecated_at,
+    constant_availability, constants, constants_available_at, is_constant, is_constant_available,
+    is_constant_deprecated_at,
 };
 pub use extension::is_core_extension;
 pub use query::{
-    function_availability, functions, is_function, is_function_available, is_function_deprecated_at,
+    function_availability, functions, functions_available_at, is_function, is_function_available,
+    is_function_deprecated_at,
 };
 pub use version::{ParsePhpVersionError, PhpVersion};
 

@@ -49,12 +49,36 @@ pub fn classes() -> impl Iterator<Item = (&'static str, &'static Availability)> 
         .map(|(name, availability)| (*name, availability))
 }
 
+/// Iterate the (lowercased) names of every native class, interface and enum
+/// available at `version`, in sorted order: the per-version class list. Included
+/// when introduced at or before `version` and not yet removed (class-likes
+/// predating the 7.4 floor are included). Intended for the supported range
+/// (7.4 to 8.5).
+pub fn classes_available_at(version: PhpVersion) -> impl Iterator<Item = &'static str> {
+    classes()
+        .filter(move |(_, availability)| availability.is_available_at(version))
+        .map(|(name, _)| name)
+}
+
 /// Iterate every declared native method as `(class, method, &Availability)`, in
 /// sorted `(class, method)` order.
 pub fn methods() -> impl Iterator<Item = (&'static str, &'static str, &'static Availability)> {
     METHODS
         .iter()
         .map(|(class, method, availability)| (*class, *method, availability))
+}
+
+/// Iterate every declared native method available at `version` as
+/// `(class, method)` (both lowercased), in sorted order: the per-version method
+/// list. Included when introduced at or before `version` and not yet removed. A
+/// method carries its own `@since` or its class's, so a method can arrive after
+/// its class. Intended for the supported range (7.4 to 8.5).
+pub fn methods_available_at(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static str)> {
+    methods()
+        .filter(move |(_, _, availability)| availability.is_available_at(version))
+        .map(|(class, method, _)| (class, method))
 }
 
 /// Whether `name` is a native class-like available at `version` (case-insensitive).
@@ -127,6 +151,23 @@ pub fn is_method_deprecated_at(class: &str, method: &str, version: PhpVersion) -
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn classes_and_methods_available_at_list_the_version_set() {
+        use std::collections::HashSet;
+        let classes_82: HashSet<&str> = classes_available_at(PhpVersion::minor(8, 2)).collect();
+        assert!(classes_82.contains("random\\randomizer")); // class added 8.2
+        assert!(classes_82.contains("fiber")); // added 8.1
+        let classes_80: HashSet<&str> = classes_available_at(PhpVersion::minor(8, 0)).collect();
+        assert!(!classes_80.contains("fiber")); // added 8.1
+
+        // A method can arrive after its class: Randomizer::getFloat is 8.3.
+        let m82: HashSet<(&str, &str)> = methods_available_at(PhpVersion::minor(8, 2)).collect();
+        assert!(m82.contains(&("random\\randomizer", "nextint"))); // since the class (8.2)
+        assert!(!m82.contains(&("random\\randomizer", "getfloat"))); // method added 8.3
+        let m83: HashSet<(&str, &str)> = methods_available_at(PhpVersion::minor(8, 3)).collect();
+        assert!(m83.contains(&("random\\randomizer", "getfloat")));
+    }
 
     #[test]
     fn spot_checks_lock_known_class_versions() {

@@ -9,22 +9,29 @@
 //! stays in the table and is flagged via `deprecated`; a symbol removed at or
 //! before 7.4 is excluded entirely.
 //!
-//! This is the M3 milestone: native function and constant availability,
-//! deprecation and removal, plus an editorial deprecation `replacement`. The
-//! tables in `generated/functions.rs` and `generated/constants.rs` are
-//! machine-written from pinned phpstorm-stubs data, cross-checked against
-//! PHPCompatibility (see `tools/regenerate` and `NOTICE`). Constant names are
-//! case-sensitive; function names are not. Classes arrive in a later milestone.
+//! This is the M4 milestone: native function, constant, class (interface, enum)
+//! and method availability, deprecation and removal, plus an editorial
+//! deprecation `replacement`. The tables under `generated/` are machine-written
+//! from pinned phpstorm-stubs data, cross-checked against PHPCompatibility for
+//! functions, constants and classes (see `tools/regenerate` and `NOTICE`).
+//! Methods have no PHPCompatibility sniff, so their availability rests on the
+//! single authoritative stub `@since`/`@removed`. Constant names are
+//! case-sensitive; function, class and method names are not.
 
 #![forbid(unsafe_code)]
 
 mod availability;
+mod classes;
 mod constants;
 mod generated;
 mod query;
 mod version;
 
 pub use availability::{Availability, SymbolKind};
+pub use classes::{
+    class_availability, is_class, is_class_available, is_class_deprecated_at, is_method,
+    is_method_available, is_method_deprecated_at, method_availability,
+};
 pub use constants::{
     constant_availability, is_constant, is_constant_available, is_constant_deprecated_at,
 };

@@ -8,6 +8,7 @@ use crate::PhpVersion;
 /// present at or before that floor, so treat it as always available within the
 /// supported range rather than reading a fabricated pre-7.4 version.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Availability {
     /// First version the symbol appeared in, or `None` if it predates the floor.
     pub added: Option<PhpVersion>,
@@ -63,6 +64,7 @@ impl Availability {
 
 /// The category of native symbol an [`Availability`] describes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SymbolKind {
     /// A native function, for example `str_contains`.
     Function,

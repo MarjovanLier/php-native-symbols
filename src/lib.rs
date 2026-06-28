@@ -37,6 +37,7 @@ mod constants;
 mod extension;
 mod generated;
 mod lookup;
+mod provenance;
 mod query;
 mod sources;
 mod symbols;
@@ -70,6 +71,7 @@ pub use extension::{
     extensions, functions_in_extension, is_core_extension, methods_in_extension, symbol_extension,
     ExtensionRequirement,
 };
+pub use provenance::{availability_provenance, AvailabilityField, FactConfidence, FieldProvenance};
 pub use query::{
     function_availability, functions, functions_added_in, functions_available_at,
     functions_deprecated_as_of, functions_removed_by, is_function, is_function_available,

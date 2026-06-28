@@ -20,10 +20,14 @@ exclude = [".claude", ".codex", ".github", "fuzz", "tools"]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
 [dependencies]
+serde = { version = "1", optional = true, default-features = false, features = ["derive"] }
 
-# The library has no runtime dependencies. The offline table generator is a
-# separate workspace member (tools/regenerate) with its own dependencies and is
-# never part of the published crate.
+# The default library build has no runtime dependencies. The offline table
+# generator is a separate workspace member (tools/regenerate) with its own
+# dependencies and is never part of the published crate.
+
+[features]
+serde = ["dep:serde"]
 
 [dev-dependencies]
 # Test-only: property tests for PhpVersion parsing and ordering. Not a runtime

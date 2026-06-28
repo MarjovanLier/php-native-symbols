@@ -5,6 +5,7 @@ use crate::{PhpVersion, ResolvedSymbol, SymbolRef};
 
 /// A structured compatibility finding for one requested symbol.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum CompatibilityIssue<'a> {
     /// The symbol exists, but only from a later PHP version.
     NotYetAvailable {
@@ -44,6 +45,7 @@ pub enum CompatibilityIssue<'a> {
 
 /// The viable PHP version window implied by a set of known native symbols.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CompatibilityWindow {
     /// Maximum `added` version among known symbols, ignoring `added: None`.
     pub minimum_required: Option<PhpVersion>,
@@ -87,6 +89,41 @@ pub struct CompatibilityReport<'a> {
     pub issues: Vec<CompatibilityIssue<'a>>,
     /// Viable PHP version window implied by all known input symbols.
     pub window: CompatibilityWindow,
+}
+
+#[cfg(feature = "serde")]
+impl<'a> serde::Serialize for CompatibilityReport<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        let mut state = serializer.serialize_struct("CompatibilityReport", 3)?;
+        state.serialize_field("target", &self.target)?;
+        state.serialize_field("issues", &IssueSlice(&self.issues))?;
+        state.serialize_field("window", &self.window)?;
+        state.end()
+    }
+}
+
+#[cfg(feature = "serde")]
+struct IssueSlice<'a, 'b>(&'b [CompatibilityIssue<'a>]);
+
+#[cfg(feature = "serde")]
+impl<'a> serde::Serialize for IssueSlice<'a, '_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeSeq;
+
+        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+        for issue in self.0 {
+            seq.serialize_element(issue)?;
+        }
+        seq.end()
+    }
 }
 
 /// Return the compatibility issue for one symbol at `target`, if any.

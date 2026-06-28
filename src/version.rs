@@ -11,6 +11,7 @@ use std::str::FromStr;
 /// The data tables key on `major.minor` and store `patch` as `0`; the `patch`
 /// field exists for callers that carry a full version string.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct PhpVersion {
     pub major: u8,
     pub minor: u8,

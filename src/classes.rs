@@ -23,6 +23,7 @@ use crate::{Availability, PhpVersion};
 
 /// A native method callable on a requested class, including inherited methods.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct CallableMethod {
     /// Canonical key of the requested class.
     pub class: &'static str,

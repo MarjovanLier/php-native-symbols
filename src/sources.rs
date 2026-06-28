@@ -45,6 +45,7 @@ static SOURCES: [SourceInfo; 4] = [
 
 /// PHP minor-version coverage carried by the generated tables.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct CoverageRange {
     /// First supported PHP minor version.
     pub first: PhpVersion,
@@ -56,6 +57,7 @@ pub struct CoverageRange {
 
 /// How a source contributes to the shipped data.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SourceRole {
     /// Primary source used to derive shipped data.
     Primary,
@@ -69,6 +71,7 @@ pub enum SourceRole {
 
 /// One source named in this crate's data manifest.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct SourceInfo {
     /// Human-readable source name.
     pub name: &'static str,
@@ -84,6 +87,7 @@ pub struct SourceInfo {
 
 /// Static source manifest for the shipped data.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct SourceManifest {
     /// PHP version coverage.
     pub coverage: CoverageRange,

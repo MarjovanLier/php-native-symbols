@@ -7,6 +7,7 @@ use crate::{Availability, PhpVersion};
 
 /// Error returned when a version range cannot be queried.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum VersionRangeError {
     /// The range starts after it ends.
     Reversed {
@@ -19,6 +20,7 @@ pub enum VersionRangeError {
 
 /// The lifecycle event represented by a change-set entry.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SymbolChangeKind {
     /// A symbol was introduced.
     Added,
@@ -30,6 +32,7 @@ pub enum SymbolChangeKind {
 
 /// A function lifecycle change.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum FunctionChange {
     /// A function changed in `version`.
     Changed {
@@ -46,6 +49,7 @@ pub enum FunctionChange {
 
 /// A constant lifecycle change.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ConstantChange {
     /// A constant changed in `version`.
     Changed {
@@ -62,6 +66,7 @@ pub enum ConstantChange {
 
 /// A class, interface or enum lifecycle change.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ClassChange {
     /// A class-like symbol changed in `version`.
     Changed {
@@ -78,6 +83,7 @@ pub enum ClassChange {
 
 /// A declared method lifecycle change.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum MethodChange {
     /// A declared method changed in `version`.
     Changed {
@@ -96,6 +102,7 @@ pub enum MethodChange {
 
 /// A lifecycle change for any public symbol kind.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum SymbolChange {
     /// A function change.
     Function(FunctionChange),

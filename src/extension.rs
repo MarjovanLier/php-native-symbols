@@ -108,6 +108,7 @@ const EXTENSIONS: &[&str] = &[
 
 /// A resolved extension requirement for a requested symbol.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ExtensionRequirement<'a> {
     /// The caller-provided symbol reference.
     pub requested: SymbolRef<'a>,

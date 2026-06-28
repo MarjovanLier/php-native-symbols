@@ -10,6 +10,7 @@ use crate::Availability;
 /// Function, class and method names are resolved case-insensitively by lookup
 /// APIs. Constant names are resolved case-sensitively.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum SymbolRef<'a> {
     /// A native function candidate.
     Function(&'a str),
@@ -28,6 +29,7 @@ pub enum SymbolRef<'a> {
 
 /// A PHP native symbol resolved to this crate's canonical table key.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ResolvedSymbol {
     /// A native function.
     Function(&'static str),

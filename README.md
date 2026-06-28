@@ -48,12 +48,17 @@ supported range. `deprecated` is kept as the real version even when it predates
 `removed` follows the bundled core distribution: an extension unbundled into PECL
 (`imap` and `pspell` at 8.4) reads as removed at that version.
 
+Function and class names are case-insensitive, so they are matched
+case-insensitively. Constant names are case-sensitive, so `PHP_INT_MAX` resolves
+and `php_int_max` does not, and near-twins such as `FILTER_VALIDATE_BOOL` (8.0)
+and `FILTER_VALIDATE_BOOLEAN` (predates the floor) are distinct entries.
+
 ## Status
 
-Functions are done: availability, deprecation, removal and an editorial
-deprecation `replacement` all ship. Next is expanding outward to constants and
-classes. Progress lives in the checklists below; the engineering detail lives in
-[PLAN.md](PLAN.md).
+Functions and constants are done: availability, deprecation, removal and an
+editorial deprecation `replacement` ship for both, with constant names handled
+case-sensitively. Next is classes, interfaces, enums and methods. Progress lives
+in the checklists below; the engineering detail lives in [PLAN.md](PLAN.md).
 
 ## Roadmap (build from the basics up)
 
@@ -87,9 +92,10 @@ the end of M1; full function lifecycle (deprecation, removal, replacement) at M2
 - [x] Tag a `0.2.0`
 
 ### M3 - Constants
-- [ ] `generated/constants.rs` from the same pipeline
-- [ ] `constant_availability(name)` (case-SENSITIVE names)
-- [ ] Facts: FILTER_VALIDATE_BOOL=8.0, E_STRICT deprecated 8.4; JSON_THROW_ON_ERROR predates the 7.4 floor (added: None)
+- [x] `generated/constants.rs` from the same pipeline
+- [x] `constant_availability(name)` (case-SENSITIVE names) + `is_constant` / `is_constant_available` / `is_constant_deprecated_at`
+- [x] Facts: FILTER_VALIDATE_BOOL=8.0, E_STRICT deprecated 8.4; JSON_THROW_ON_ERROR predates the 7.4 floor (added: None)
+- [x] Tag a `0.3.0`
 
 ### M4 - Classes, interfaces, enums and methods
 - [ ] `class_availability(name)` (case-insensitive)
@@ -127,6 +133,21 @@ if is_function_deprecated_at("utf8_encode", PhpVersion::new(8, 2, 0)) {
 // and the lookup is case-insensitive).
 if let Some(a) = function_availability("\\STR_CONTAINS") {
     let _ = (a.added, a.deprecated, a.removed, a.replacement, a.extension);
+}
+```
+
+Constants work the same way, but their names are **case-sensitive** (a leading
+`\` is still stripped):
+
+```rust
+use php_native_symbols::{constant_availability, is_constant_available, PhpVersion};
+
+if is_constant_available("FILTER_VALIDATE_BOOL", PhpVersion::new(8, 0, 0)) {
+    // ... the 8.0 boolean filter exists at 8.0
+}
+// Exact case required: this resolves, `php_int_max` would return None.
+if let Some(a) = constant_availability("\\PHP_INT_MAX") {
+    let _ = (a.added, a.deprecated, a.removed, a.extension);
 }
 ```
 

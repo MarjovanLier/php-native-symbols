@@ -6,9 +6,10 @@
 //! a default PHP build ships, for example to avoid suggesting a `curl` function on
 //! a build without curl.
 
-use crate::classes::{classes, methods, resolve_class, resolve_method};
-use crate::constants::{constants, resolve_constant};
-use crate::query::{functions, resolve_function};
+use crate::classes::{classes, methods};
+use crate::constants::constants;
+use crate::query::functions;
+use crate::symbols::resolve_symbol;
 use crate::{Availability, ResolvedSymbol, SymbolRef};
 
 /// Extensions present in a default PHP build. This is an EDITORIAL default-build
@@ -203,22 +204,6 @@ where
     I: IntoIterator<Item = SymbolRef<'a>>,
 {
     symbols.into_iter().filter_map(extension_requirement)
-}
-
-fn resolve_symbol(symbol: SymbolRef<'_>) -> Option<(ResolvedSymbol, Availability)> {
-    match symbol {
-        SymbolRef::Function(name) => resolve_function(name)
-            .map(|(name, availability)| (ResolvedSymbol::Function(name), availability)),
-        SymbolRef::Constant(name) => resolve_constant(name)
-            .map(|(name, availability)| (ResolvedSymbol::Constant(name), availability)),
-        SymbolRef::Class(name) => resolve_class(name)
-            .map(|(name, availability)| (ResolvedSymbol::Class(name), availability)),
-        SymbolRef::Method { class, method } => {
-            resolve_method(class, method).map(|(class, method, availability)| {
-                (ResolvedSymbol::Method { class, method }, availability)
-            })
-        }
-    }
 }
 
 #[cfg(test)]

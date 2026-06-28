@@ -1,4 +1,9 @@
-//! Shared public symbol reference types.
+//! Shared public symbol reference types and crate-internal resolution.
+
+use crate::classes::{resolve_class, resolve_method};
+use crate::constants::resolve_constant;
+use crate::query::resolve_function;
+use crate::Availability;
 
 /// A borrowed reference to a PHP native symbol candidate.
 ///
@@ -37,4 +42,20 @@ pub enum ResolvedSymbol {
         /// The canonical method key.
         method: &'static str,
     },
+}
+
+pub(crate) fn resolve_symbol(symbol: SymbolRef<'_>) -> Option<(ResolvedSymbol, Availability)> {
+    match symbol {
+        SymbolRef::Function(name) => resolve_function(name)
+            .map(|(name, availability)| (ResolvedSymbol::Function(name), availability)),
+        SymbolRef::Constant(name) => resolve_constant(name)
+            .map(|(name, availability)| (ResolvedSymbol::Constant(name), availability)),
+        SymbolRef::Class(name) => resolve_class(name)
+            .map(|(name, availability)| (ResolvedSymbol::Class(name), availability)),
+        SymbolRef::Method { class, method } => {
+            resolve_method(class, method).map(|(class, method, availability)| {
+                (ResolvedSymbol::Method { class, method }, availability)
+            })
+        }
+    }
 }

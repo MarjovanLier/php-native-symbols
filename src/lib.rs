@@ -32,6 +32,7 @@
 mod availability;
 mod changes;
 mod classes;
+mod compatibility;
 mod constants;
 mod extension;
 mod generated;
@@ -53,6 +54,10 @@ pub use classes::{
     is_method_available, is_method_deprecated_at, method_availability, methods, methods_added_in,
     methods_available_at, methods_deprecated_as_of, methods_removed_by, resolve_class,
     resolve_method,
+};
+pub use compatibility::{
+    compatibility_issue_at, compatibility_report_at, compatibility_window, CompatibilityIssue,
+    CompatibilityReport, CompatibilityWindow,
 };
 pub use constants::{
     constant_availability, constants, constants_added_in, constants_available_at,

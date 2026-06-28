@@ -1,0 +1,31 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/cargo-quality.sh",
+            "args": ["post"],
+            "statusMessage": "cargo fmt + clippy",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/cargo-quality.sh",
+            "args": ["stop"],
+            "statusMessage": "cargo quality gate (fmt, clippy, test)",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

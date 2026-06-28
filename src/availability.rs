@@ -29,6 +29,38 @@ pub struct Availability {
     pub compiler_optimized: bool,
 }
 
+impl Availability {
+    /// Whether the symbol is present at `version`: introduced at or before it
+    /// (`added: None` means it predates the floor, so it counts as present) and
+    /// not yet removed (`removed` absent, or strictly after `version`). A
+    /// deprecated but still-present symbol counts as available.
+    ///
+    /// Shared by every `is_*_available` predicate so the comparison lives in one
+    /// place; intended for versions in the supported range (7.4 to 8.5).
+    #[must_use]
+    pub(crate) fn is_available_at(&self, version: PhpVersion) -> bool {
+        let introduced = match self.added {
+            Some(added) => added <= version,
+            None => true,
+        };
+        let not_removed = match self.removed {
+            Some(removed) => version < removed,
+            None => true,
+        };
+        introduced && not_removed
+    }
+
+    /// Whether the symbol has a deprecation version at or before `version`. A
+    /// symbol stays deprecated once deprecated, including after removal.
+    #[must_use]
+    pub(crate) fn is_deprecated_at(&self, version: PhpVersion) -> bool {
+        match self.deprecated {
+            Some(deprecated) => deprecated <= version,
+            None => false,
+        }
+    }
+}
+
 /// The category of native symbol an [`Availability`] describes.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum SymbolKind {

@@ -46,16 +46,7 @@ pub fn is_function_available(name: &str, version: PhpVersion) -> bool {
     let Some(availability) = function_availability(name) else {
         return false;
     };
-    let introduced = match availability.added {
-        Some(added) => added <= version,
-        // Predates the 7.4 floor: present from the start of the supported range.
-        None => true,
-    };
-    let not_removed = match availability.removed {
-        Some(removed) => version < removed,
-        None => true,
-    };
-    introduced && not_removed
+    availability.is_available_at(version)
 }
 
 /// Whether `name` is a native function deprecated at `version`.
@@ -66,10 +57,10 @@ pub fn is_function_available(name: &str, version: PhpVersion) -> bool {
 /// versions in the supported range (7.4 to 8.5).
 #[must_use]
 pub fn is_function_deprecated_at(name: &str, version: PhpVersion) -> bool {
-    match function_availability(name).and_then(|a| a.deprecated) {
-        Some(deprecated) => deprecated <= version,
-        None => false,
-    }
+    let Some(availability) = function_availability(name) else {
+        return false;
+    };
+    availability.is_deprecated_at(version)
 }
 
 #[cfg(test)]

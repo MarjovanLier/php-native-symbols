@@ -572,14 +572,18 @@ struct KindSpec {
     /// / `"class"`.
     label: &'static str,
     /// Reflection-cache `_type` discriminators for this kind. Classes collapse
-    /// `PHPClass`, `PHPInterface` and `PHPEnum` into one table.
+    /// `PHPClass`, `PHPInterface` and `PHPEnum` into one table; the stub metadata
+    /// files are filtered by the same set.
     cache_types: &'static [&'static str],
-    /// The stub metadata file's `_type` discriminator. Differs from
-    /// [`KindSpec::cache_types`] for classes: `StubsClasses.json` labels every
-    /// class-like (including interfaces and enums) as `PHPClass`.
-    stub_type: &'static str,
-    /// Stub metadata file under `tests/cache/`.
-    stub_cache_file: &'static str,
+    /// Stub metadata files under `tests/cache/`. Classes read three
+    /// (`StubsClasses`, `StubsInterfaces`, `StubsEnums`) so interfaces and enums
+    /// get a real extension; the others read one.
+    stub_cache_files: &'static [&'static str],
+    /// Reviewed name -> extension assignments for symbols absent from the stub
+    /// metadata (a few core constants: TRUE/FALSE/NULL). Applied only when the
+    /// stub files have no mapping; a symbol with neither fails generation, so no
+    /// row ever ships with a placeholder or empty extension.
+    extension_overrides: &'static [(&'static str, &'static str)],
     /// Output file under `src/generated/`.
     out_file: &'static str,
     /// Case-folding policy for names.
@@ -609,8 +613,8 @@ fn function_spec() -> KindSpec {
     KindSpec {
         label: "function",
         cache_types: &["PHPFunction"],
-        stub_type: "PHPFunction",
-        stub_cache_file: "StubsFunctions.json",
+        stub_cache_files: &["StubsFunctions.json"],
+        extension_overrides: &[],
         out_file: "functions.rs",
         name_policy: NamePolicy::CaseInsensitive,
         new_sniff: "PHPCompatibility/Sniffs/FunctionUse/NewFunctionsSniff.php",
@@ -648,8 +652,10 @@ fn constant_spec() -> KindSpec {
     KindSpec {
         label: "constant",
         cache_types: &["PHPConstant"],
-        stub_type: "PHPConstant",
-        stub_cache_file: "StubsConstants.json",
+        stub_cache_files: &["StubsConstants.json"],
+        // TRUE/FALSE/NULL are Core language constants absent from the stub
+        // metadata; tag them Core so no constant ships without an extension.
+        extension_overrides: &[("TRUE", "Core"), ("FALSE", "Core"), ("NULL", "Core")],
         out_file: "constants.rs",
         name_policy: NamePolicy::CaseSensitive,
         new_sniff: "PHPCompatibility/Sniffs/Constants/NewConstantsSniff.php",
@@ -680,8 +686,12 @@ fn class_spec() -> KindSpec {
     KindSpec {
         label: "class",
         cache_types: &["PHPClass", "PHPInterface", "PHPEnum"],
-        stub_type: "PHPClass",
-        stub_cache_file: "StubsClasses.json",
+        stub_cache_files: &[
+            "StubsClasses.json",
+            "StubsInterfaces.json",
+            "StubsEnums.json",
+        ],
+        extension_overrides: &[],
         out_file: "classes.rs",
         name_policy: NamePolicy::CaseInsensitive,
         new_sniff: "PHPCompatibility/Sniffs/Classes/NewClassesSniff.php",
@@ -824,45 +834,40 @@ fn cache_deprecated(range_flags: &[(&str, HashMap<String, bool>)], name: &str) -
 }
 
 /// Map every stub symbol to its extension (defining stub folder), `@since` and
-/// `@removed`.
+/// `@removed`, reading every file in `files` (classes read three, so interfaces
+/// and enums get a real extension) and keeping the first mapping per name.
 fn stub_info(
-    stub_cache: &Path,
-    stub_type: &str,
+    cache_dir: &Path,
+    files: &[&str],
+    cache_types: &[&str],
     policy: NamePolicy,
 ) -> Result<HashMap<String, StubInfo>, Box<dyn Error>> {
-    let text = std::fs::read_to_string(stub_cache)
-        .map_err(|e| format!("reading {}: {e}", stub_cache.display()))?;
-    let entries: Vec<StubEntry> = serde_json::from_str(&text)
-        .map_err(|e| format!("parsing {}: {e}", stub_cache.display()))?;
     let mut map = HashMap::new();
-    for e in entries {
-        if e.kind != stub_type {
-            continue;
-        }
-        let (Some(id), Some(path)) = (e.id, e.source_path) else {
-            continue;
-        };
-        if let Some(folder) = path.split('/').next() {
-            // First mapping wins; the data has no id with conflicting folders.
-            map.entry(policy.normalise(&id))
-                .or_insert_with(|| StubInfo {
-                    extension: folder.to_string(),
-                    since: e.since_version,
-                    removed: e.removed_version,
-                });
+    for file in files {
+        let path = cache_dir.join(file);
+        let text = std::fs::read_to_string(&path)
+            .map_err(|e| format!("reading {}: {e}", path.display()))?;
+        let entries: Vec<StubEntry> =
+            serde_json::from_str(&text).map_err(|e| format!("parsing {}: {e}", path.display()))?;
+        for e in entries {
+            if !cache_types.contains(&e.kind.as_str()) {
+                continue;
+            }
+            let (Some(id), Some(source)) = (e.id, e.source_path) else {
+                continue;
+            };
+            if let Some(folder) = source.split('/').next() {
+                // First mapping wins; the data has no id with conflicting folders.
+                map.entry(policy.normalise(&id))
+                    .or_insert_with(|| StubInfo {
+                        extension: folder.to_string(),
+                        since: e.since_version,
+                        removed: e.removed_version,
+                    });
+            }
         }
     }
     Ok(map)
-}
-
-/// Best-effort extension when a symbol has no stub mapping (should not happen
-/// with the pinned data, beyond a few core constants). Uses the namespace head,
-/// else `"unknown"`.
-fn fallback_extension(name: &str) -> String {
-    match name.rsplit_once('\\') {
-        Some((ns, _)) => ns.split('\\').next().unwrap_or("unknown").to_string(),
-        None => "unknown".to_string(),
-    }
 }
 
 fn cache_path(stubs: &Path, ver: &str) -> PathBuf {
@@ -975,8 +980,9 @@ fn generate(
         .collect();
 
     let stub = stub_info(
-        &stubs.join("tests/cache").join(spec.stub_cache_file),
-        spec.stub_type,
+        &stubs.join("tests/cache"),
+        spec.stub_cache_files,
+        spec.cache_types,
         policy,
     )?;
     let co_set: HashSet<&str> = spec.compiler_optimized.iter().copied().collect();
@@ -985,6 +991,8 @@ fn generate(
     let removed_override_map: HashMap<&str, Option<(u8, u8)>> =
         spec.removed_overrides.iter().copied().collect();
     let replacement_map: HashMap<&str, &str> = spec.replacements.iter().copied().collect();
+    let ext_override_map: HashMap<&str, &str> = spec.extension_overrides.iter().copied().collect();
+    let added_artefact: HashSet<&str> = spec.added_artefact_exts.iter().copied().collect();
     let removed_artefact: HashSet<&str> = spec.removed_artefact_exts.iter().copied().collect();
 
     // PHPCompatibility oracle: NewSniff true-version (added) and RemovedSniff
@@ -1045,7 +1053,7 @@ fn generate(
 
     // Diagnostics and the named failure buckets the gates fill.
     let mut gaps = 0usize;
-    let mut unmapped_extension: Vec<String> = Vec::new();
+    let mut missing_extension: Vec<String> = Vec::new();
     let mut artefact_corrections: HashMap<String, usize> = HashMap::new();
     let mut overrides_applied = 0usize;
     let mut removed_unconfirmed_artefact: Vec<String> = Vec::new();
@@ -1057,10 +1065,19 @@ fn generate(
     let mut records = Vec::with_capacity(union.len());
     for name in &union {
         let info = stub.get(name);
-        let extension = info.map(|i| i.extension.clone()).unwrap_or_else(|| {
-            unmapped_extension.push(name.clone());
-            fallback_extension(name)
-        });
+        // Extension: the stub mapping, else a reviewed override, else a hard
+        // failure (collected below). No "unknown" fallback ever ships.
+        let extension = info
+            .map(|i| i.extension.clone())
+            .or_else(|| {
+                ext_override_map
+                    .get(name.as_str())
+                    .map(|s| (*s).to_string())
+            })
+            .unwrap_or_else(|| {
+                missing_extension.push(name.clone());
+                String::new()
+            });
         let since = info.and_then(|i| i.since.clone());
 
         // added: predates the floor (in 7.3) -> None; otherwise the earliest
@@ -1074,14 +1091,15 @@ fn generate(
                 .map(|(v, _)| parse_mm(v))
         };
 
-        // Artefact correction: an in-range diff for a symbol whose whole
-        // extension is absent at the floor, with no in-range @since, is a build
-        // artefact for a pre-floor symbol -> None. Only applies to a symbol with a
-        // real stub extension: an unmapped symbol (a class-like interface or enum
-        // absent from StubsClasses.json) is not extension-conditional, so its diff
-        // is authoritative and must not be nulled (e.g. Stringable, added 8.0).
+        // Artefact correction: an in-range diff for a symbol whose extension is a
+        // reviewed old-but-conditionally-compiled extension (absent at the floor),
+        // with no in-range @since, is a build artefact for a pre-floor symbol ->
+        // None. Gated on the reviewed added-artefact allowlist: a NEW extension
+        // (random 8.2, uri 8.5) is also absent at the floor, but its symbols are
+        // genuinely new, so the diff is authoritative and must not be nulled. The
+        // allowlist is the human's "this old extension is conditionally compiled".
         let corrected = if diff_added.is_some()
-            && info.is_some()
+            && added_artefact.contains(extension.as_str())
             && !floor_exts.contains(&extension)
             && since_is_prefloor(&since)
         {
@@ -1203,20 +1221,16 @@ fn generate(
         });
     }
 
-    // Artefact correction must only touch reviewed extensions.
-    let allow: HashSet<&str> = spec.added_artefact_exts.iter().copied().collect();
-    let unexpected: Vec<&String> = artefact_corrections
-        .keys()
-        .filter(|e| !allow.contains(e.as_str()))
-        .collect();
-    if !unexpected.is_empty() {
-        return Err(format!(
-            "{}: added-artefact correction fired for unreviewed extension(s) {unexpected:?}; \
-             inspect the data and update the kind's added-artefact allowlist",
-            spec.label
-        )
-        .into());
-    }
+    // Every row must carry a real extension: the stub mapping or a reviewed
+    // override. A symbol with neither fails generation, so no row ever ships with
+    // a placeholder or empty extension.
+    missing_extension.sort();
+    fail_if_any(
+        &missing_extension,
+        "missing_extension",
+        "symbol(s) with no stub extension and no reviewed extension override; add a stub source \
+         or an entry to the kind's extension_overrides",
+    )?;
 
     // Every compiler-optimized name must be a real symbol in the table.
     let missing_co: Vec<&str> = spec
@@ -1425,14 +1439,6 @@ fn generate(
         "  artefact corrections -> None: {corrected_total} {artefact_corrections:?}; \
          reviewed added overrides applied: {overrides_applied}; presence gaps: {gaps}"
     );
-    if !unmapped_extension.is_empty() {
-        eprintln!(
-            "  warning: {} {}(s) had no stub extension mapping (used fallback): {:?}",
-            unmapped_extension.len(),
-            spec.label,
-            unmapped_extension
-        );
-    }
     Ok(records)
 }
 
@@ -1809,7 +1815,8 @@ fn generate_methods(
             continue;
         };
         let cremoved = class_removed.get(cls.as_str()).copied().flatten();
-        let cext = class_ext.get(cls.as_str()).copied().unwrap_or("unknown");
+        // The class is in the table (checked above), so it has a real extension.
+        let cext = class_ext[cls.as_str()];
         for m in e.methods {
             let Some(mname) = m.name else { continue };
             let mkey = mname.to_ascii_lowercase();

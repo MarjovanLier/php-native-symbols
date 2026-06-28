@@ -149,6 +149,7 @@ pub fn is_method_deprecated_at(class: &str, method: &str, version: PhpVersion) -
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
 

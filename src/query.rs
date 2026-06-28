@@ -84,6 +84,7 @@ pub fn is_function_deprecated_at(name: &str, version: PhpVersion) -> bool {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
 

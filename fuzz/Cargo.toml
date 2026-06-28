@@ -1,0 +1,33 @@
+[package]
+name = "php-native-symbols-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+# Standalone workspace: the fuzz harness needs nightly and libfuzzer, so it is
+# deliberately detached from the library's stable workspace.
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+[dependencies.php-native-symbols]
+path = ".."
+
+[[bin]]
+name = "parse_version"
+path = "fuzz_targets/parse_version.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "lookup_symbols"
+path = "fuzz_targets/lookup_symbols.rs"
+test = false
+doc = false
+bench = false

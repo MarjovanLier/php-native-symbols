@@ -11,7 +11,13 @@ keywords = ["php", "version", "compatibility", "availability", "static-analysis"
 categories = ["development-tools"]
 # Developer-only tooling, never part of the published crate. The generated
 # tables under src/generated/ are the shipped data and are packaged.
-exclude = [".claude", ".codex", ".github", "tools"]
+exclude = [".claude", ".codex", ".github", "fuzz", "tools"]
+
+# cargo-llvm-cov sets cfg(coverage_nightly) on its nightly run (see the
+# coverage(off) attributes on the test modules). Declare it so the name is known
+# and `cargo clippy -- -D warnings` stays clean when the cfg is absent.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage_nightly)'] }
 
 [dependencies]
 
@@ -26,3 +32,6 @@ proptest = "1"
 
 [workspace]
 members = ["tools/regenerate"]
+# The fuzz harness is a standalone nightly+libfuzzer crate; keep it out of the
+# stable workspace so `cargo build`/`cargo test` at the root never touch it.
+exclude = ["fuzz"]

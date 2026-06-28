@@ -24,6 +24,10 @@
 //! default-build assumption, not a runtime guarantee).
 
 #![forbid(unsafe_code)]
+// cargo-llvm-cov sets cfg(coverage_nightly) on its nightly run; there the
+// `coverage(off)` attribute on the test modules excludes test scaffolding from
+// the coverage denominator. The attribute is inert on stable, so the MSRV holds.
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 mod availability;
 mod classes;
@@ -51,6 +55,7 @@ pub use query::{
 pub use version::{ParsePhpVersionError, PhpVersion};
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
 

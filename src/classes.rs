@@ -1,23 +1,20 @@
 //! Lookups over the generated class and method tables.
 //!
 //! Class, interface and enum names are case-insensitive in PHP, so the lookup
-//! key is the name with a single leading `\` stripped and lowercased, found by
-//! binary search of the name-sorted [`CLASSES`] slice. Methods are keyed by the
-//! `(class, method)` pair, both normalised the same way, in the [`METHODS`] slice
-//! (sorted by that pair). Methods are declared-only: an inherited method is not
-//! attributed to a child class, so `method_availability` answers "does this class
-//! itself declare this method", not "can an instance call it".
+//! key is the name with a single leading `\` stripped and then compared ASCII
+//! case-insensitively against the name-sorted [`CLASSES`] slice. Methods are
+//! keyed by the `(class, method)` pair, compared the same way, in the [`METHODS`]
+//! slice (sorted by that pair). Methods are declared-only: an inherited method is
+//! not attributed to a child class, so `method_availability` answers "does this
+//! class itself declare this method", not "can an instance call it".
 
 use crate::generated::classes::CLASSES;
 use crate::generated::methods::METHODS;
+use crate::lookup::{
+    binary_search_ascii_case_insensitive, binary_search_ascii_case_insensitive_pair,
+    strip_one_leading_backslash,
+};
 use crate::{Availability, PhpVersion};
-
-/// Normalise a class name to its lookup key: strip one leading `\` (callers may
-/// pass fully-qualified names) and lowercase it (PHP class names, including the
-/// namespace, are case-insensitive).
-fn normalise_class(name: &str) -> String {
-    name.strip_prefix('\\').unwrap_or(name).to_ascii_lowercase()
-}
 
 /// Look up a native class, interface or enum's availability by name
 /// (case-insensitive).
@@ -27,11 +24,18 @@ fn normalise_class(name: &str) -> String {
 /// always available within 7.4 to 8.5.
 #[must_use]
 pub fn class_availability(name: &str) -> Option<Availability> {
-    let key = normalise_class(name);
-    CLASSES
-        .binary_search_by_key(&key.as_str(), |&(candidate, _)| candidate)
-        .ok()
-        .map(|index| CLASSES[index].1)
+    resolve_class(name).map(|(_, availability)| availability)
+}
+
+/// Resolve a native class-like name to its canonical table key and availability.
+///
+/// A single leading `\` is stripped and matching is case-insensitive. Returns
+/// `None` for an unknown native class, interface or enum.
+#[must_use]
+pub fn resolve_class(name: &str) -> Option<(&'static str, Availability)> {
+    let key = strip_one_leading_backslash(name);
+    binary_search_ascii_case_insensitive(CLASSES, key, |&(candidate, _)| candidate)
+        .map(|index| CLASSES[index])
 }
 
 /// Whether `name` is a known native class, interface or enum anywhere in PHP 7.4
@@ -60,6 +64,34 @@ pub fn classes_available_at(version: PhpVersion) -> impl Iterator<Item = &'stati
         .map(|(name, _)| name)
 }
 
+/// Iterate native class-likes introduced exactly in `version`.
+///
+/// Class-likes whose `added` is `None` predate the coverage floor and are not
+/// included.
+pub fn classes_added_in(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    classes().filter(move |(_, availability)| availability.added == Some(version))
+}
+
+/// Iterate native class-likes deprecated at or before `version`.
+pub fn classes_deprecated_as_of(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    classes().filter(move |(_, availability)| availability.is_deprecated_at(version))
+}
+
+/// Iterate native class-likes removed at or before `version`.
+pub fn classes_removed_by(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    classes().filter(move |(_, availability)| {
+        availability
+            .removed
+            .is_some_and(|removed| removed <= version)
+    })
+}
+
 /// Iterate every declared native method as `(class, method, &Availability)`, in
 /// sorted `(class, method)` order.
 pub fn methods() -> impl Iterator<Item = (&'static str, &'static str, &'static Availability)> {
@@ -79,6 +111,34 @@ pub fn methods_available_at(
     methods()
         .filter(move |(_, _, availability)| availability.is_available_at(version))
         .map(|(class, method, _)| (class, method))
+}
+
+/// Iterate declared native methods introduced exactly in `version`.
+///
+/// Methods whose `added` is `None` predate the coverage floor and are not
+/// included.
+pub fn methods_added_in(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static str, &'static Availability)> {
+    methods().filter(move |(_, _, availability)| availability.added == Some(version))
+}
+
+/// Iterate declared native methods deprecated at or before `version`.
+pub fn methods_deprecated_as_of(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static str, &'static Availability)> {
+    methods().filter(move |(_, _, availability)| availability.is_deprecated_at(version))
+}
+
+/// Iterate declared native methods removed at or before `version`.
+pub fn methods_removed_by(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static str, &'static Availability)> {
+    methods().filter(move |(_, _, availability)| {
+        availability
+            .removed
+            .is_some_and(|removed| removed <= version)
+    })
 }
 
 /// Whether `name` is a native class-like available at `version` (case-insensitive).
@@ -111,14 +171,28 @@ pub fn is_class_deprecated_at(name: &str, version: PhpVersion) -> bool {
 /// sniff), so it is a single-source value (see `NOTICE`).
 #[must_use]
 pub fn method_availability(class: &str, method: &str) -> Option<Availability> {
-    let class_key = normalise_class(class);
-    let method_key = method.to_ascii_lowercase();
-    METHODS
-        .binary_search_by_key(&(class_key.as_str(), method_key.as_str()), |&(c, m, _)| {
-            (c, m)
-        })
-        .ok()
-        .map(|index| METHODS[index].2)
+    resolve_method(class, method).map(|(_, _, availability)| availability)
+}
+
+/// Resolve a declared native method to its canonical `(class, method)` table key
+/// and availability.
+///
+/// A single leading `\` is stripped from the class. Class and method matching
+/// are case-insensitive. Returns `None` for an unknown method or for a method
+/// inherited but not declared by `class`.
+#[must_use]
+pub fn resolve_method(
+    class: &str,
+    method: &str,
+) -> Option<(&'static str, &'static str, Availability)> {
+    let class_key = strip_one_leading_backslash(class);
+    binary_search_ascii_case_insensitive_pair(METHODS, class_key, method, |&(class, method, _)| {
+        (class, method)
+    })
+    .map(|index| {
+        let (class, method, availability) = METHODS[index];
+        (class, method, availability)
+    })
 }
 
 /// Whether `class` itself declares the native method `method` anywhere in PHP 7.4

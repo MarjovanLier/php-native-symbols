@@ -1,18 +1,13 @@
 //! Lookups over the generated function table.
 //!
-//! Names are normalised once here (strip a single leading `\`, lowercase) and
-//! then found by binary search of the name-sorted [`FUNCTIONS`] slice. PHP
-//! function names are case-insensitive, so both the table keys and the query
-//! are lowercased.
+//! Names strip a single leading `\` and are found by binary search of the
+//! name-sorted [`FUNCTIONS`] slice. PHP function names are case-insensitive, so
+//! the lookup compares ASCII case-insensitively without allocating a normalised
+//! query string.
 
 use crate::generated::functions::FUNCTIONS;
+use crate::lookup::{binary_search_ascii_case_insensitive, strip_one_leading_backslash};
 use crate::{Availability, PhpVersion};
-
-/// Normalise a function name to its lookup key: strip one leading `\` (callers
-/// may pass fully-qualified names) and lowercase it.
-fn normalise(name: &str) -> String {
-    name.strip_prefix('\\').unwrap_or(name).to_ascii_lowercase()
-}
 
 /// Look up a native function's availability by name.
 ///
@@ -21,11 +16,18 @@ fn normalise(name: &str) -> String {
 /// treat it as always available within 7.4 to 8.5.
 #[must_use]
 pub fn function_availability(name: &str) -> Option<Availability> {
-    let key = normalise(name);
-    FUNCTIONS
-        .binary_search_by_key(&key.as_str(), |&(candidate, _)| candidate)
-        .ok()
-        .map(|index| FUNCTIONS[index].1)
+    resolve_function(name).map(|(_, availability)| availability)
+}
+
+/// Resolve a native function name to its canonical table key and availability.
+///
+/// A single leading `\` is stripped and matching is case-insensitive. Returns
+/// `None` for an unknown native function.
+#[must_use]
+pub fn resolve_function(name: &str) -> Option<(&'static str, Availability)> {
+    let key = strip_one_leading_backslash(name);
+    binary_search_ascii_case_insensitive(FUNCTIONS, key, |&(candidate, _)| candidate)
+        .map(|index| FUNCTIONS[index])
 }
 
 /// Whether `name` is a known native function anywhere in PHP 7.4 to 8.5.
@@ -52,6 +54,37 @@ pub fn functions_available_at(version: PhpVersion) -> impl Iterator<Item = &'sta
     functions()
         .filter(move |(_, availability)| availability.is_available_at(version))
         .map(|(name, _)| name)
+}
+
+/// Iterate native functions introduced exactly in `version`.
+///
+/// Functions whose `added` is `None` predate the coverage floor and are not
+/// included.
+pub fn functions_added_in(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    functions().filter(move |(_, availability)| availability.added == Some(version))
+}
+
+/// Iterate native functions deprecated at or before `version`.
+///
+/// Removed functions remain included once deprecated, matching
+/// [`is_function_deprecated_at`].
+pub fn functions_deprecated_as_of(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    functions().filter(move |(_, availability)| availability.is_deprecated_at(version))
+}
+
+/// Iterate native functions removed at or before `version`.
+pub fn functions_removed_by(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    functions().filter(move |(_, availability)| {
+        availability
+            .removed
+            .is_some_and(|removed| removed <= version)
+    })
 }
 
 /// Whether `name` is a native function available at `version`.

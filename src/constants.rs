@@ -24,11 +24,21 @@ fn normalise_constant(name: &str) -> &str {
 /// treat it as always available within 7.4 to 8.5.
 #[must_use]
 pub fn constant_availability(name: &str) -> Option<Availability> {
+    resolve_constant(name).map(|(_, availability)| availability)
+}
+
+/// Resolve a native constant name to its exact canonical table key and
+/// availability.
+///
+/// A single leading `\` is stripped. Matching is case-sensitive. Returns `None`
+/// for an unknown native constant or wrong-case spelling.
+#[must_use]
+pub fn resolve_constant(name: &str) -> Option<(&'static str, Availability)> {
     let key = normalise_constant(name);
     CONSTANTS
         .binary_search_by_key(&key, |&(candidate, _)| candidate)
         .ok()
-        .map(|index| CONSTANTS[index].1)
+        .map(|index| CONSTANTS[index])
 }
 
 /// Whether `name` is a known native constant anywhere in PHP 7.4 to 8.5
@@ -55,6 +65,34 @@ pub fn constants_available_at(version: PhpVersion) -> impl Iterator<Item = &'sta
     constants()
         .filter(move |(_, availability)| availability.is_available_at(version))
         .map(|(name, _)| name)
+}
+
+/// Iterate native constants introduced exactly in `version`.
+///
+/// Constants whose `added` is `None` predate the coverage floor and are not
+/// included.
+pub fn constants_added_in(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    constants().filter(move |(_, availability)| availability.added == Some(version))
+}
+
+/// Iterate native constants deprecated at or before `version`.
+pub fn constants_deprecated_as_of(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    constants().filter(move |(_, availability)| availability.is_deprecated_at(version))
+}
+
+/// Iterate native constants removed at or before `version`.
+pub fn constants_removed_by(
+    version: PhpVersion,
+) -> impl Iterator<Item = (&'static str, &'static Availability)> {
+    constants().filter(move |(_, availability)| {
+        availability
+            .removed
+            .is_some_and(|removed| removed <= version)
+    })
 }
 
 /// Whether `name` is a native constant available at `version` (case-sensitive).

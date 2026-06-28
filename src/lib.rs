@@ -30,28 +30,50 @@
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 mod availability;
+mod changes;
 mod classes;
 mod constants;
 mod extension;
 mod generated;
+mod lookup;
 mod query;
+mod sources;
+mod symbols;
 mod version;
 
 pub use availability::{Availability, SymbolKind};
+pub use changes::{
+    class_changes_between, constant_changes_between, function_changes_between,
+    method_changes_between, symbol_changes_between, ClassChange, ConstantChange, FunctionChange,
+    MethodChange, SymbolChange, SymbolChangeKind, VersionRangeError,
+};
 pub use classes::{
-    class_availability, classes, classes_available_at, is_class, is_class_available,
-    is_class_deprecated_at, is_method, is_method_available, is_method_deprecated_at,
-    method_availability, methods, methods_available_at,
+    class_availability, classes, classes_added_in, classes_available_at, classes_deprecated_as_of,
+    classes_removed_by, is_class, is_class_available, is_class_deprecated_at, is_method,
+    is_method_available, is_method_deprecated_at, method_availability, methods, methods_added_in,
+    methods_available_at, methods_deprecated_as_of, methods_removed_by, resolve_class,
+    resolve_method,
 };
 pub use constants::{
-    constant_availability, constants, constants_available_at, is_constant, is_constant_available,
-    is_constant_deprecated_at,
+    constant_availability, constants, constants_added_in, constants_available_at,
+    constants_deprecated_as_of, constants_removed_by, is_constant, is_constant_available,
+    is_constant_deprecated_at, resolve_constant,
 };
-pub use extension::is_core_extension;
+pub use extension::{
+    classes_in_extension, constants_in_extension, extension_requirement, extension_requirements,
+    extensions, functions_in_extension, is_core_extension, methods_in_extension, symbol_extension,
+    ExtensionRequirement,
+};
 pub use query::{
-    function_availability, functions, functions_available_at, is_function, is_function_available,
-    is_function_deprecated_at,
+    function_availability, functions, functions_added_in, functions_available_at,
+    functions_deprecated_as_of, functions_removed_by, is_function, is_function_available,
+    is_function_deprecated_at, resolve_function,
 };
+pub use sources::{
+    coverage_range, source_manifest, supported_versions, CoverageRange, SourceInfo, SourceManifest,
+    SourceRole,
+};
+pub use symbols::{ResolvedSymbol, SymbolRef};
 pub use version::{ParsePhpVersionError, PhpVersion};
 
 #[cfg(test)]

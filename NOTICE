@@ -115,5 +115,5 @@ Regeneration (maintainers only; never needed by consumers):
   cargo run -p regenerate -- <phpstorm-stubs checkout> <phpcompatibility checkout>
 
 The generator verifies the phpstorm-stubs checkout is at the pinned commit,
-fails on any unresolved disagreement with PHPCompatibility, and rewrites
-src/generated/functions.rs. See PLAN.md for the full pipeline.
+fails on any unresolved disagreement with PHPCompatibility, and rewrites the
+tables under src/generated/. See tools/regenerate/README.md for the full pipeline.

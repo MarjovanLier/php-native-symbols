@@ -19,7 +19,7 @@
 //
 // Regenerate with `cargo run -p regenerate --
 // <phpstorm-stubs checkout> <phpcompatibility checkout>`; see NOTICE and
-// PLAN.md. 331 classes.
+// tools/regenerate/README.md. 331 classes.
 
 use crate::{Availability, PhpVersion};
 

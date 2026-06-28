@@ -18,7 +18,7 @@
 //
 // Regenerate with `cargo run -p regenerate --
 // <phpstorm-stubs checkout> <phpcompatibility checkout>`; see NOTICE and
-// PLAN.md. 3231 constants.
+// tools/regenerate/README.md. 3231 constants.
 
 use crate::{Availability, PhpVersion};
 

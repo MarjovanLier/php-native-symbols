@@ -89,4 +89,4 @@ The override and artefact-extension lists, the curated deprecations and the
 editorial replacements are the only hand-maintained values. Everything else is
 derived and cross-checked. Each override is a PHP-manual fact that must agree
 with PHPCompatibility where PHPCompatibility has an opinion; an override may not
-overrule it. See `PLAN.md` (local) and `NOTICE` for the full provenance.
+overrule it. See `NOTICE` for the full provenance.

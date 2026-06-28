@@ -36,8 +36,8 @@
 //!     ships no constant-deprecation sniff. Terse canonical labels only, never
 //!     copied prose, never cross-checked (there is no second structured source).
 //!
-//! Artefact correction (PLAN section 7, "prefer phpstorm-stubs unless clearly
-//! wrong"): some extensions are only conditionally compiled into the reflection
+//! Artefact correction (prefer phpstorm-stubs unless clearly wrong): some
+//! extensions are only conditionally compiled into the reflection
 //! builds, so a symbol can appear in-range (mis-dating `added`) or vanish from a
 //! late build (looking removed). For `added`, an extension absent at the 7.4
 //! floor build with no in-range `@since` predates the floor -> `None`, gated by a
@@ -1623,7 +1623,7 @@ fn header(spec: &KindSpec, n: usize, sha: &str) -> String {
              //\n\
              // Regenerate with `cargo run -p regenerate --\n\
              // <phpstorm-stubs checkout> <phpcompatibility checkout>`; see NOTICE and\n\
-             // PLAN.md. {n} functions.\n\n\
+             // tools/regenerate/README.md. {n} functions.\n\n\
              use crate::{{Availability, PhpVersion}};\n\n\
              // One row per function keeps the table reviewable and diff-friendly on\n\
              // regeneration; rustfmt would otherwise explode each row across lines.\n\
@@ -1654,7 +1654,7 @@ fn header(spec: &KindSpec, n: usize, sha: &str) -> String {
              //\n\
              // Regenerate with `cargo run -p regenerate --\n\
              // <phpstorm-stubs checkout> <phpcompatibility checkout>`; see NOTICE and\n\
-             // PLAN.md. {n} constants.\n\n\
+             // tools/regenerate/README.md. {n} constants.\n\n\
              use crate::{{Availability, PhpVersion}};\n\n\
              // One row per constant keeps the table reviewable and diff-friendly on\n\
              // regeneration; rustfmt would otherwise explode each row across lines.\n\
@@ -1685,7 +1685,7 @@ fn header(spec: &KindSpec, n: usize, sha: &str) -> String {
              //\n\
              // Regenerate with `cargo run -p regenerate --\n\
              // <phpstorm-stubs checkout> <phpcompatibility checkout>`; see NOTICE and\n\
-             // PLAN.md. {n} classes.\n\n\
+             // tools/regenerate/README.md. {n} classes.\n\n\
              use crate::{{Availability, PhpVersion}};\n\n\
              // One row per class keeps the table reviewable and diff-friendly on\n\
              // regeneration; rustfmt would otherwise explode each row across lines.\n\
@@ -1966,7 +1966,7 @@ fn render_methods(merged: &BTreeMap<(String, String), MethodRow>, sha: &str) -> 
          //\n\
          // Regenerate with `cargo run -p regenerate --\n\
          // <phpstorm-stubs checkout> <phpcompatibility checkout>`; see NOTICE and\n\
-         // PLAN.md. {n} methods.\n\n\
+         // tools/regenerate/README.md. {n} methods.\n\n\
          use crate::{{Availability, PhpVersion}};\n\n\
          // One row per method keeps the table reviewable and diff-friendly on\n\
          // regeneration; rustfmt would otherwise explode each row across lines.\n\

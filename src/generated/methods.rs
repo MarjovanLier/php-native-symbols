@@ -16,7 +16,7 @@
 //
 // Regenerate with `cargo run -p regenerate --
 // <phpstorm-stubs checkout> <phpcompatibility checkout>`; see NOTICE and
-// PLAN.md. 2232 methods.
+// tools/regenerate/README.md. 2232 methods.
 
 use crate::{Availability, PhpVersion};
 

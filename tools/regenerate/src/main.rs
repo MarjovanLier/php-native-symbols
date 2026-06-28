@@ -893,9 +893,12 @@ fn head_sha(dir: &Path) -> Result<String, Box<dyn Error>> {
 fn main() -> Result<(), Box<dyn Error>> {
     let mut positional = Vec::new();
     let mut allow_sha_mismatch = false;
+    let mut hierarchy_only = false;
     for arg in std::env::args().skip(1) {
         if arg == "--allow-sha-mismatch" {
             allow_sha_mismatch = true;
+        } else if arg == "--hierarchy-only" {
+            hierarchy_only = true;
         } else {
             positional.push(arg);
         }
@@ -907,15 +910,21 @@ fn main() -> Result<(), Box<dyn Error>> {
         .or_else(|| std::env::var("PHPSTORM_STUBS_DIR").ok())
         .ok_or("pass the phpstorm-stubs checkout path (arg 1 or PHPSTORM_STUBS_DIR)")?;
     let stubs = PathBuf::from(stubs);
-    let phpcompat = positional
-        .get(1)
-        .cloned()
-        .or_else(|| std::env::var("PHPCOMPATIBILITY_DIR").ok())
-        .map(PathBuf::from)
-        .ok_or(
-            "pass the PHPCompatibility checkout (arg 2 or PHPCOMPATIBILITY_DIR); \
-             the added cross-check is mandatory",
-        )?;
+    let phpcompat = if hierarchy_only {
+        None
+    } else {
+        Some(
+            positional
+                .get(1)
+                .cloned()
+                .or_else(|| std::env::var("PHPCOMPATIBILITY_DIR").ok())
+                .map(PathBuf::from)
+                .ok_or(
+                    "pass the PHPCompatibility checkout (arg 2 or PHPCOMPATIBILITY_DIR); \
+                     the added cross-check is mandatory",
+                )?,
+        )
+    };
 
     // Reproducibility: both sources must trace to their pinned commits.
     let actual_sha = head_sha(&stubs)?;
@@ -927,6 +936,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             return Err(format!("{msg}; pass --allow-sha-mismatch to override").into());
         }
     }
+
+    if hierarchy_only {
+        generate_hierarchy(&stubs, &actual_sha)?;
+        return Ok(());
+    }
+
+    let phpcompat = phpcompat.expect("normal generation requires PHPCompatibility");
     let phpcompat_sha = head_sha(&phpcompat)?;
     if phpcompat_sha != PHPCOMPATIBILITY_SHA {
         let msg = format!(
@@ -1698,16 +1714,131 @@ fn header(spec: &KindSpec, n: usize, sha: &str) -> String {
     }
 }
 
-/// One class entry from `StubsClasses.json`, with its declared methods. Methods
-/// are declared-only here (the stub's class body), never the inherited-inclusive
-/// reflection method list, so an inherited method is not attributed to a child.
+/// One class-like entry from the `Stubs{Classes,Interfaces,Enums}.json` files.
+/// Methods are declared-only here (the stub's class body), never the
+/// inherited-inclusive reflection method list, so an inherited method is not
+/// attributed to a child.
 #[derive(Deserialize)]
 struct StubClassEntry {
     #[serde(rename = "_type")]
     kind: String,
     id: Option<String>,
+    #[serde(rename = "parentClass")]
+    parent_class: Option<String>,
+    #[serde(default)]
+    interfaces: Vec<String>,
     #[serde(default)]
     methods: Vec<StubMethod>,
+}
+
+/// Emit `src/generated/hierarchy.rs` from direct class-like ancestry in the
+/// phpstorm-stubs class metadata. A row's value is `parentClass` plus
+/// `interfaces`, normalised with the same policy as the class table.
+fn generate_hierarchy(stubs: &Path, actual_sha: &str) -> Result<(), Box<dyn Error>> {
+    let hierarchy = build_hierarchy(stubs)?;
+    let out_path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../src/generated/hierarchy.rs");
+    std::fs::write(&out_path, render_hierarchy(&hierarchy, actual_sha))?;
+
+    eprintln!(
+        "generated {} hierarchy rows -> {}",
+        hierarchy.len(),
+        out_path.display()
+    );
+    Ok(())
+}
+
+fn build_hierarchy(stubs: &Path) -> Result<BTreeMap<String, Vec<String>>, Box<dyn Error>> {
+    let spec = class_spec();
+    let policy = spec.name_policy;
+    let cache_dir = stubs.join("tests/cache");
+    let mut map: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+
+    for file in spec.stub_cache_files {
+        let path = cache_dir.join(file);
+        let text = std::fs::read_to_string(&path)
+            .map_err(|e| format!("reading {}: {e}", path.display()))?;
+        let entries: Vec<StubClassEntry> =
+            serde_json::from_str(&text).map_err(|e| format!("parsing {}: {e}", path.display()))?;
+
+        for e in entries {
+            if !spec.cache_types.contains(&e.kind.as_str()) {
+                continue;
+            }
+            let Some(id) = e.id.as_deref() else {
+                continue;
+            };
+            let class_key = policy.normalise(id);
+            if class_key.is_empty() {
+                continue;
+            }
+
+            let mut ancestors = BTreeSet::new();
+            if let Some(parent) = e.parent_class.as_deref().map(str::trim) {
+                insert_hierarchy_ancestor(&mut ancestors, parent, policy);
+            }
+            for interface in &e.interfaces {
+                insert_hierarchy_ancestor(&mut ancestors, interface.trim(), policy);
+            }
+
+            if !ancestors.is_empty() {
+                map.entry(class_key).or_default().extend(ancestors);
+            }
+        }
+    }
+
+    Ok(map
+        .into_iter()
+        .map(|(class, ancestors)| (class, ancestors.into_iter().collect()))
+        .collect())
+}
+
+fn insert_hierarchy_ancestor(ancestors: &mut BTreeSet<String>, raw: &str, policy: NamePolicy) {
+    if raw.is_empty() {
+        return;
+    }
+    let ancestor = policy.normalise(raw);
+    if !ancestor.is_empty() {
+        ancestors.insert(ancestor);
+    }
+}
+
+/// Render `src/generated/hierarchy.rs`: a sorted class key to sorted direct
+/// ancestor key table.
+fn render_hierarchy(hierarchy: &BTreeMap<String, Vec<String>>, sha: &str) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "// @generated by tools/regenerate - DO NOT EDIT BY HAND.\n\
+         //\n\
+         // Native PHP class, interface and enum direct hierarchy for PHP 7.4\n\
+         // through 8.5, keyed by lowercased class name.\n\
+         //\n\
+         // Direct ancestors from JetBrains phpstorm-stubs (Apache-2.0) @ {sha},\n\
+         // tests/cache/StubsClasses.json, StubsInterfaces.json and\n\
+         // StubsEnums.json. Each value is parentClass plus interfaces, normalised\n\
+         // with the class key policy: strip one leading backslash, lowercase,\n\
+         // sort and deduplicate. PHPCompatibility is not read for this table.\n\
+         //\n\
+         // Regenerate with `cargo run -p regenerate -- --hierarchy-only\n\
+         // <phpstorm-stubs checkout>`; see NOTICE and tools/regenerate/README.md.\n\
+         // {n} class-likes with direct ancestors.\n\n\
+         // Intentionally unused until the inherited-method query API is added.\n\
+         #[allow(dead_code)]\n\
+         #[rustfmt::skip]\n\
+         pub static HIERARCHY: &[(&str, &[&str])] = &[\n",
+        sha = sha,
+        n = hierarchy.len(),
+    ));
+    for (class, ancestors) in hierarchy {
+        let ancestors = ancestors
+            .iter()
+            .map(|ancestor| format!("{ancestor:?}"))
+            .collect::<Vec<_>>()
+            .join(", ");
+        out.push_str(&format!("    ({class:?}, &[{ancestors}]),\n"));
+    }
+    out.push_str("];\n");
+    out
 }
 
 /// One declared method: its name, `@since`/`@removed`, and the deprecation flag

@@ -6,4 +6,5 @@
 pub(crate) mod classes;
 pub(crate) mod constants;
 pub(crate) mod functions;
+pub(crate) mod hierarchy;
 pub(crate) mod methods;

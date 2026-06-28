@@ -49,11 +49,12 @@ pub use changes::{
     MethodChange, SymbolChange, SymbolChangeKind, VersionRangeError,
 };
 pub use classes::{
-    class_availability, classes, classes_added_in, classes_available_at, classes_deprecated_as_of,
-    classes_removed_by, is_class, is_class_available, is_class_deprecated_at, is_method,
-    is_method_available, is_method_deprecated_at, method_availability, methods, methods_added_in,
-    methods_available_at, methods_deprecated_as_of, methods_removed_by, resolve_class,
-    resolve_method,
+    callable_method_availability, class_availability, classes, classes_added_in,
+    classes_available_at, classes_deprecated_as_of, classes_removed_by, is_callable_method,
+    is_callable_method_available, is_callable_method_deprecated_at, is_class, is_class_available,
+    is_class_deprecated_at, is_method, is_method_available, is_method_deprecated_at,
+    method_availability, methods, methods_added_in, methods_available_at, methods_deprecated_as_of,
+    methods_removed_by, resolve_class, resolve_method, CallableMethod,
 };
 pub use compatibility::{
     compatibility_issue_at, compatibility_report_at, compatibility_window, CompatibilityIssue,

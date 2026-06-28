@@ -1,13 +1,14 @@
 use std::collections::HashSet;
 
 use php_native_symbols::{
-    class_availability, classes, classes_available_at, constant_availability, constants,
-    constants_available_at, function_availability, functions, functions_available_at, is_class,
-    is_class_available, is_class_deprecated_at, is_constant, is_constant_available,
-    is_constant_deprecated_at, is_core_extension, is_function, is_function_available,
-    is_function_deprecated_at, is_method, is_method_available, is_method_deprecated_at,
-    method_availability, methods, methods_available_at, Availability, ParsePhpVersionError,
-    PhpVersion, SymbolKind,
+    callable_method_availability, class_availability, classes, classes_available_at,
+    constant_availability, constants, constants_available_at, function_availability, functions,
+    functions_available_at, is_callable_method, is_callable_method_available,
+    is_callable_method_deprecated_at, is_class, is_class_available, is_class_deprecated_at,
+    is_constant, is_constant_available, is_constant_deprecated_at, is_core_extension, is_function,
+    is_function_available, is_function_deprecated_at, is_method, is_method_available,
+    is_method_deprecated_at, method_availability, methods, methods_available_at, Availability,
+    CallableMethod, ParsePhpVersionError, PhpVersion, SymbolKind,
 };
 
 const PHP_74: PhpVersion = PhpVersion::minor(7, 4);
@@ -472,6 +473,155 @@ fn method_public_api_handles_declared_only_lookup_and_boundaries() {
 
     let methods_83: HashSet<_> = methods_available_at(PHP_83).collect();
     assert!(methods_83.contains(&("random\\randomizer", "getfloat")));
+}
+
+#[test]
+fn callable_method_public_api_resolves_direct_and_inherited_methods() {
+    let set_iterator_mode = method_availability("SplStack", "setIteratorMode")
+        .expect("SplStack::setIteratorMode should be declared");
+    let direct = callable_method_availability("SplStack", "setIteratorMode")
+        .expect("SplStack::setIteratorMode should be callable");
+    assert_eq!(
+        direct,
+        CallableMethod {
+            class: "splstack",
+            method: "setiteratormode",
+            declaring_class: "splstack",
+            availability: set_iterator_mode,
+        }
+    );
+    assert_eq!(cloned_through_trait(&direct), direct);
+    let copied = direct;
+    assert_eq!(copied, direct);
+    assert!(format!("{direct:?}").contains("CallableMethod"));
+
+    let push = callable_method_availability("SplStack", "push")
+        .expect("SplStack::push should be inherited from SplDoublyLinkedList");
+    assert_eq!(push.class, "splstack");
+    assert_eq!(push.method, "push");
+    assert_eq!(push.declaring_class, "spldoublylinkedlist");
+    assert_eq!(push.availability.added, None);
+    assert_eq!(push.availability.removed, None);
+    assert_eq!(push.availability.extension, "SPL");
+    assert_eq!(method_availability("SplStack", "push"), None);
+    assert!(is_callable_method("SplStack", "push"));
+
+    let mixed_case = callable_method_availability("\\sPlStAcK", "PUSH")
+        .expect("class and method lookup should be case-insensitive");
+    assert_eq!(mixed_case, push);
+
+    // DirectoryIterator's direct ancestors are SeekableIterator and SplFileInfo.
+    // The first is an interface with no method row in the declared-method table,
+    // so this confirms traversal continues and resolves the parent declaration.
+    let to_string = callable_method_availability("DirectoryIterator", "__toString")
+        .expect("DirectoryIterator::__toString should resolve from SplFileInfo");
+    assert_eq!(to_string.class, "directoryiterator");
+    assert_eq!(to_string.method, "__tostring");
+    assert_eq!(to_string.declaring_class, "splfileinfo");
+}
+
+#[test]
+fn callable_method_public_api_handles_missing_names_and_diamond_deduplication() {
+    assert_eq!(
+        callable_method_availability("SplStack", "definitelyNotAMethod"),
+        None
+    );
+    assert_eq!(
+        callable_method_availability("DefinitelyNotAPhpClass", "push"),
+        None
+    );
+    assert_eq!(
+        callable_method_availability("stdClass", "definitelyNotAMethod"),
+        None
+    );
+    assert!(!is_callable_method("SplStack", "definitelyNotAMethod"));
+    assert!(!is_callable_method("DefinitelyNotAPhpClass", "push"));
+    assert!(!is_callable_method("stdClass", "definitelyNotAMethod"));
+
+    // IntlPartsIterator reaches Iterator directly and through IntlIterator.
+    // A missing method forces the traversal through the duplicate ancestor.
+    assert_eq!(
+        callable_method_availability("IntlPartsIterator", "definitelyNotAMethod"),
+        None
+    );
+}
+
+#[test]
+fn callable_method_public_api_uses_effective_availability_bounds() {
+    let get_message = callable_method_availability("ValueError", "getMessage")
+        .expect("ValueError::getMessage should resolve from Error");
+    assert_eq!(get_message.class, "valueerror");
+    assert_eq!(get_message.method, "getmessage");
+    assert_eq!(get_message.declaring_class, "error");
+    assert_eq!(get_message.availability.added, Some(PHP_80));
+    assert_eq!(get_message.availability.removed, None);
+    assert!(!is_callable_method_available(
+        "ValueError",
+        "getMessage",
+        PHP_74
+    ));
+    assert!(is_callable_method_available(
+        "ValueError",
+        "getMessage",
+        PHP_80
+    ));
+
+    let get_feature = callable_method_availability("DOMAttr", "getFeature")
+        .expect("DOMAttr::getFeature should resolve from DOMNode");
+    assert_eq!(get_feature.class, "domattr");
+    assert_eq!(get_feature.method, "getfeature");
+    assert_eq!(get_feature.declaring_class, "domnode");
+    assert_eq!(get_feature.availability.added, None);
+    assert_eq!(get_feature.availability.removed, Some(PHP_80));
+    assert!(is_callable_method_available(
+        "DOMAttr",
+        "getFeature",
+        PHP_74
+    ));
+    assert!(!is_callable_method_available(
+        "DOMAttr",
+        "getFeature",
+        PHP_80
+    ));
+    assert!(!is_callable_method_available(
+        "DefinitelyNotAPhpClass",
+        "getFeature",
+        PHP_74
+    ));
+}
+
+#[test]
+fn callable_method_public_api_uses_method_deprecation_metadata() {
+    let get_class = callable_method_availability("ReflectionParameter", "getClass")
+        .expect("ReflectionParameter::getClass should be callable");
+    assert_eq!(get_class.class, "reflectionparameter");
+    assert_eq!(get_class.method, "getclass");
+    assert_eq!(get_class.declaring_class, "reflectionparameter");
+    assert_eq!(get_class.availability.deprecated, Some(PHP_80));
+    assert_eq!(
+        get_class.availability.replacement,
+        Some("ReflectionParameter::getType()")
+    );
+    assert!(!is_callable_method_deprecated_at(
+        "ReflectionParameter",
+        "getClass",
+        PHP_74
+    ));
+    assert!(is_callable_method_deprecated_at(
+        "ReflectionParameter",
+        "getClass",
+        PHP_80
+    ));
+    assert!(!is_callable_method_deprecated_at(
+        "ValueError",
+        "getMessage",
+        PHP_85
+    ));
+    assert!(!is_callable_method_deprecated_at(
+        "DefinitelyNotAPhpClass",
+        "getClass",
+        PHP_85
+    ));
 }
 
 #[test]

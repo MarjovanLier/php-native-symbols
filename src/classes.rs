@@ -6,15 +6,33 @@
 //! keyed by the `(class, method)` pair, compared the same way, in the [`METHODS`]
 //! slice (sorted by that pair). Methods are declared-only: an inherited method is
 //! not attributed to a child class, so `method_availability` answers "does this
-//! class itself declare this method", not "can an instance call it".
+//! class itself declare this method", not "can an instance call it". The
+//! `callable_*` method APIs use the generated direct hierarchy table to resolve
+//! inherited methods without changing the declared-only APIs.
+
+use std::collections::VecDeque;
 
 use crate::generated::classes::CLASSES;
+use crate::generated::hierarchy::HIERARCHY;
 use crate::generated::methods::METHODS;
 use crate::lookup::{
     binary_search_ascii_case_insensitive, binary_search_ascii_case_insensitive_pair,
     strip_one_leading_backslash,
 };
 use crate::{Availability, PhpVersion};
+
+/// A native method callable on a requested class, including inherited methods.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct CallableMethod {
+    /// Canonical key of the requested class.
+    pub class: &'static str,
+    /// Canonical method key.
+    pub method: &'static str,
+    /// Canonical key of the class that declares the method.
+    pub declaring_class: &'static str,
+    /// Effective availability for calling this method on [`CallableMethod::class`].
+    pub availability: Availability,
+}
 
 /// Look up a native class, interface or enum's availability by name
 /// (case-insensitive).
@@ -174,6 +192,92 @@ pub fn method_availability(class: &str, method: &str) -> Option<Availability> {
     resolve_method(class, method).map(|(_, _, availability)| availability)
 }
 
+/// Look up a native method callable on `class`, including methods declared by
+/// ancestors in the generated hierarchy.
+///
+/// The requested class is resolved first. If the class itself declares `method`,
+/// that declaration wins. Otherwise the direct hierarchy is walked transitively,
+/// with visited-node deduplication for diamonds and cycle protection. The
+/// returned availability is effective for calling the method on the requested
+/// class: `added` is the latest present introduction bound across the requested
+/// class and method; `removed` is the earliest present removal bound across the
+/// same two rows. Deprecation, replacement, extension and
+/// `compiler_optimized` come from the method declaration.
+#[must_use]
+pub fn callable_method_availability(class: &str, method: &str) -> Option<CallableMethod> {
+    let (class_key, class_availability) = resolve_class(class)?;
+
+    if let Some((declaring_class, method_key, method_availability)) =
+        resolve_method(class_key, method)
+    {
+        return Some(callable_method_from_declared(
+            class_key,
+            class_availability,
+            declaring_class,
+            method_key,
+            method_availability,
+        ));
+    }
+
+    let mut pending = VecDeque::new();
+    if let Some(ancestors) = direct_ancestors(class_key) {
+        pending.extend(ancestors.iter().copied());
+    }
+
+    let mut visited = vec![class_key];
+    while let Some(ancestor) = pending.pop_front() {
+        if visited.contains(&ancestor) {
+            continue;
+        }
+        visited.push(ancestor);
+
+        if let Some((declaring_class, method_key, method_availability)) =
+            resolve_method(ancestor, method)
+        {
+            return Some(callable_method_from_declared(
+                class_key,
+                class_availability,
+                declaring_class,
+                method_key,
+                method_availability,
+            ));
+        }
+
+        if let Some(ancestors) = direct_ancestors(ancestor) {
+            pending.extend(ancestors.iter().copied());
+        }
+    }
+
+    None
+}
+
+/// Whether `method` is callable on `class`, including inherited native methods.
+#[must_use]
+pub fn is_callable_method(class: &str, method: &str) -> bool {
+    callable_method_availability(class, method).is_some()
+}
+
+/// Whether `method` is callable on `class` and available at `version`, including
+/// inherited native methods.
+#[must_use]
+pub fn is_callable_method_available(class: &str, method: &str, version: PhpVersion) -> bool {
+    let Some(callable) = callable_method_availability(class, method) else {
+        return false;
+    };
+    callable.availability.is_available_at(version)
+}
+
+/// Whether the callable method on `class` is deprecated at `version`, including
+/// inherited native methods. Method deprecation is editorial (PHP manual, see
+/// `NOTICE`).
+#[must_use]
+pub fn is_callable_method_deprecated_at(class: &str, method: &str, version: PhpVersion) -> bool {
+    let Some(callable) = callable_method_availability(class, method) else {
+        return false;
+    };
+    callable.availability.is_deprecated_at(version)
+}
+
 /// Resolve a declared native method to its canonical `(class, method)` table key
 /// and availability.
 ///
@@ -222,10 +326,95 @@ pub fn is_method_deprecated_at(class: &str, method: &str, version: PhpVersion) -
     availability.is_deprecated_at(version)
 }
 
+fn direct_ancestors(class: &str) -> Option<&'static [&'static str]> {
+    binary_search_ascii_case_insensitive(HIERARCHY, class, |&(candidate, _)| candidate)
+        .map(|index| HIERARCHY[index].1)
+}
+
+fn callable_method_from_declared(
+    class: &'static str,
+    class_availability: Availability,
+    declaring_class: &'static str,
+    method: &'static str,
+    method_availability: Availability,
+) -> CallableMethod {
+    CallableMethod {
+        class,
+        method,
+        declaring_class,
+        availability: effective_callable_availability(class_availability, method_availability),
+    }
+}
+
+fn effective_callable_availability(
+    class_availability: Availability,
+    method_availability: Availability,
+) -> Availability {
+    Availability {
+        added: latest_present([class_availability.added, method_availability.added]),
+        removed: earliest_present([class_availability.removed, method_availability.removed]),
+        deprecated: method_availability.deprecated,
+        replacement: method_availability.replacement,
+        extension: method_availability.extension,
+        compiler_optimized: method_availability.compiler_optimized,
+    }
+}
+
+fn latest_present(versions: [Option<PhpVersion>; 2]) -> Option<PhpVersion> {
+    let mut latest: Option<PhpVersion> = None;
+    for version in versions.into_iter().flatten() {
+        latest = Some(match latest {
+            Some(current) => current.max(version),
+            None => version,
+        });
+    }
+    latest
+}
+
+fn earliest_present(versions: [Option<PhpVersion>; 2]) -> Option<PhpVersion> {
+    let mut earliest: Option<PhpVersion> = None;
+    for version in versions.into_iter().flatten() {
+        earliest = Some(match earliest {
+            Some(current) => current.min(version),
+            None => version,
+        });
+    }
+    earliest
+}
+
 #[cfg(test)]
 #[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn effective_callable_availability_takes_latest_added_and_earliest_removed() {
+        // Two present `added` and two present `removed` versions exercise the
+        // max and min arms of the combinators; the public-API fixtures only ever
+        // contribute one present version each, so they miss those arms.
+        let class = Availability {
+            added: Some(PhpVersion::minor(8, 1)),
+            deprecated: None,
+            removed: Some(PhpVersion::minor(8, 4)),
+            replacement: None,
+            extension: "Core",
+            compiler_optimized: false,
+        };
+        let method = Availability {
+            added: Some(PhpVersion::minor(8, 0)),
+            deprecated: Some(PhpVersion::minor(8, 2)),
+            removed: Some(PhpVersion::minor(8, 5)),
+            replacement: Some("successor()"),
+            extension: "SPL",
+            compiler_optimized: false,
+        };
+        let effective = effective_callable_availability(class, method);
+        assert_eq!(effective.added, Some(PhpVersion::minor(8, 1))); // latest of 8.1 and 8.0
+        assert_eq!(effective.removed, Some(PhpVersion::minor(8, 4))); // earliest of 8.4 and 8.5
+        assert_eq!(effective.deprecated, Some(PhpVersion::minor(8, 2))); // from the method
+        assert_eq!(effective.replacement, Some("successor()"));
+        assert_eq!(effective.extension, "SPL");
+    }
 
     #[test]
     fn classes_and_methods_available_at_list_the_version_set() {
@@ -360,6 +549,40 @@ mod tests {
                 "method {class}::{method} is not lowercase"
             );
             assert_availability_invariants(&format!("{class}::{method}"), availability);
+        }
+    }
+
+    #[test]
+    fn hierarchy_table_is_sorted_unique_and_normalised() {
+        for pair in HIERARCHY.windows(2) {
+            assert!(
+                pair[0].0 < pair[1].0,
+                "hierarchy not sorted/unique at {:?}",
+                pair[0].0
+            );
+        }
+        for (class, ancestors) in HIERARCHY {
+            assert!(!class.starts_with('\\'), "{class} has a leading backslash");
+            assert_eq!(
+                *class,
+                class.to_ascii_lowercase(),
+                "{class} is not lowercase"
+            );
+            for ancestor in *ancestors {
+                assert!(
+                    !ancestor.starts_with('\\'),
+                    "{class} ancestor {ancestor} has a leading backslash"
+                );
+                assert_eq!(
+                    *ancestor,
+                    ancestor.to_ascii_lowercase(),
+                    "{class} ancestor {ancestor} is not lowercase"
+                );
+                assert_ne!(
+                    *class, *ancestor,
+                    "{class} lists itself as a direct ancestor"
+                );
+            }
         }
     }
 

@@ -56,11 +56,11 @@ Each milestone is shippable on its own. The function-availability MVP lands at
 the end of M1.
 
 ### M0 - Scaffolding
-- [ ] `cargo init --lib`, crate name `php-native-symbols`, edition 2021
-- [ ] `PhpVersion` type: `{ major, minor, patch }`, `Ord`, const ctors, `FromStr` ("8.1" / "8.1.3")
-- [ ] `Availability` struct and a `SymbolKind` enum
-- [ ] `#![forbid(unsafe_code)]`, MSRV documented, CI running `fmt` + `clippy` + `test`
-- [ ] A handful of hand-written entries so the API compiles and is exercised by a test
+- [x] `cargo init --lib`, crate name `php-native-symbols`, edition 2021
+- [x] `PhpVersion` type: `{ major, minor, patch }`, `Ord`, const ctors, `FromStr` ("8.1" / "8.1.3")
+- [x] `Availability` struct and a `SymbolKind` enum
+- [x] `#![forbid(unsafe_code)]`, MSRV documented, CI running `fmt` + `clippy` + `test`
+- [x] A handful of hand-written entries so the API compiles and is exercised by a test
 
 ### M1 - Functions MVP (first usable release)
 - [ ] Decide and pin the data source (see PLAN for the sourcing strategy)

@@ -1,2 +1,10 @@
 /PLAN.md
 .idea/
+
+
+# Added by cargo
+
+/target
+
+# Library crate: lock file is not committed (resolved by the consumer)
+/Cargo.lock

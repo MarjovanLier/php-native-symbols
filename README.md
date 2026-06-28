@@ -40,8 +40,9 @@ From that, the questions a version-aware rule asks become trivial:
 - is it available at PHP 8.1? -> `added <= 8.1 && removed.map_or(true, |r| 8.1 < r)`
 - is it deprecated at PHP 8.2? -> `deprecated.map_or(false, |d| d <= 8.2)`
 
-`added: None` means the symbol predates the crate's coverage floor, so treat it
-as always available within the supported range.
+The crate covers PHP 7.4 through 8.5. `added: None` means the symbol predates
+this range (added at or before 7.4), so treat it as always available within the
+supported range.
 
 ## Status
 
@@ -81,7 +82,7 @@ the end of M1.
 ### M3 - Constants
 - [ ] `generated/constants.rs` from the same pipeline
 - [ ] `constant_availability(name)` (case-SENSITIVE names)
-- [ ] Facts: JSON_THROW_ON_ERROR=7.3, FILTER_VALIDATE_BOOL=8.0, E_STRICT deprecated 8.4
+- [ ] Facts: FILTER_VALIDATE_BOOL=8.0, E_STRICT deprecated 8.4; JSON_THROW_ON_ERROR predates the 7.4 floor (added: None)
 
 ### M4 - Classes, interfaces, enums and methods
 - [ ] `class_availability(name)` (case-insensitive)

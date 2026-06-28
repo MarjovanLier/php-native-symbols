@@ -56,7 +56,7 @@
 
 #![forbid(unsafe_code)]
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -412,6 +412,111 @@ const CONSTANT_DEPRECATIONS: &[(&str, (u8, u8))] = &[
 const CONSTANT_REPLACEMENTS: &[(&str, &str)] = &[];
 
 // ---------------------------------------------------------------------------
+// Class tables (M4). Classes, interfaces and enums collapse into one
+// case-INSENSITIVE table keyed by lowercased FQN.
+// ---------------------------------------------------------------------------
+
+/// Extensions whose class-likes the diff mis-dates forward because the extension
+/// is absent at the 7.4 floor build. `tidy`/`xsl`/`zip` are compiled only in
+/// some 8.x builds, so their ancient classes (TidyNode, XSLTProcessor,
+/// ZipArchive) read as in-range and are corrected to pre-floor `None`. Reviewed:
+/// a correction for an extension not listed here fails generation.
+const CLASS_ADDED_ARTIFACT_EXTENSIONS: &[&str] = &["tidy", "xsl", "zip"];
+
+/// Reviewed per-symbol class `added` overrides. Empty: the cache diff agrees with
+/// PHPCompatibility's NewClassesSniff for every class (0 disagreements). The slot
+/// exists for a future class the diff and artefact rule cannot date. (lowercased)
+const CLASS_ADDED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[];
+
+/// Reviewed per-symbol class `removed` overrides: the DOM Level 3 classes that
+/// phpstorm-stubs drops at 8.0. Nine carry an explicit stub `@removed = 8.0`;
+/// `domstringlist` and `domstringextend` disappear from the 8.0 cache in the same
+/// wave without an explicit annotation. DOM is compiled in every build, so these
+/// are genuine removals, not a whole-extension artefact, and PHPCompatibility's
+/// RemovedClassesSniff is silent on them, so they are pinned here. (lowercased)
+const CLASS_REMOVED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[
+    ("domconfiguration", Some((8, 0))),
+    ("domdomerror", Some((8, 0))),
+    ("domerrorhandler", Some((8, 0))),
+    ("domimplementationlist", Some((8, 0))),
+    ("domimplementationsource", Some((8, 0))),
+    ("domlocator", Some((8, 0))),
+    ("domnamelist", Some((8, 0))),
+    ("domstringextend", Some((8, 0))),
+    ("domstringlist", Some((8, 0))),
+    ("domtypeinfo", Some((8, 0))),
+    ("domuserdatahandler", Some((8, 0))),
+];
+
+/// Extensions whose class-likes vanish wholesale from a late reflection build
+/// because the extension was not compiled there (`ftp` at 8.5; `tidy`/`xsl`/`zip`
+/// drop after 8.3). A PHPCompatibility-silent disappearance for one of these is a
+/// build artefact -> `removed: None`; a silent disappearance outside this
+/// allowlist fails generation. DOM is deliberately absent: its removals are real
+/// (see [`CLASS_REMOVED_OVERRIDES`]).
+const CLASS_REMOVED_ARTIFACT_EXTENSIONS: &[&str] = &["ftp", "tidy", "xsl", "zip"];
+
+/// Editorial class deprecation versions: the sole source of class `deprecated`.
+/// The reflection caches carry no usable class `isDeprecated` (it is null for
+/// every class) and PHPCompatibility ships no class-deprecation sniff, so this is
+/// a reviewed PHP-manual list, fact-locked, like the constant deprecations. Empty
+/// for now: no whole-class deprecation in 7.4..8.5 is curated. (lowercased keys)
+const CLASS_DEPRECATIONS: &[(&str, (u8, u8))] = &[];
+
+/// Editorial class deprecation successors. Empty (no deprecated classes yet).
+const CLASS_REPLACEMENTS: &[(&str, &str)] = &[];
+
+// ---------------------------------------------------------------------------
+// Method table (M4). Keyed by (class_lc, method_lc); declared methods only.
+// ---------------------------------------------------------------------------
+
+/// A method lookup key: `(class_lc, method_lc)`.
+type MethodKey = (&'static str, &'static str);
+
+/// Editorial method deprecation versions, keyed by `(class_lc, method_lc)`. The
+/// stub method `isDeprecated` flag marks a method deprecated but carries no
+/// version, and PHPCompatibility ships no method sniff, so the version is a
+/// reviewed PHP-manual fact (a single-source ceiling, never cross-checked). Each
+/// entry is sanity-checked to name a declared method the stub actually flags.
+const METHOD_DEPRECATIONS: &[(MethodKey, (u8, u8))] = &[
+    // Reflection::export() and friends: deprecated 7.4, removed 8.0.
+    (("reflection", "export"), (7, 4)),
+    (("reflectionclass", "export"), (7, 4)),
+    (("reflectionclassconstant", "export"), (7, 4)),
+    (("reflectionextension", "export"), (7, 4)),
+    (("reflectionfunction", "export"), (7, 4)),
+    (("reflectionmethod", "export"), (7, 4)),
+    (("reflectionobject", "export"), (7, 4)),
+    (("reflectionparameter", "export"), (7, 4)),
+    (("reflectionproperty", "export"), (7, 4)),
+    (("reflectionzendextension", "export"), (7, 4)),
+    // ReflectionParameter type-introspection helpers: deprecated 8.0 for getType.
+    (("reflectionparameter", "getclass"), (8, 0)),
+    (("reflectionparameter", "isarray"), (8, 0)),
+    (("reflectionparameter", "iscallable"), (8, 0)),
+    // ReflectionFunctionAbstract::isDisabled: deprecated 8.0 (always false).
+    (("reflectionfunction", "isdisabled"), (8, 0)),
+];
+
+/// Editorial method deprecation successors, keyed by `(class_lc, method_lc)`,
+/// `Some` only where the method is deprecated. The ReflectionParameter type
+/// helpers point at `getType()`; the `export` methods have no single successor.
+const METHOD_REPLACEMENTS: &[(MethodKey, &str)] = &[
+    (
+        ("reflectionparameter", "getclass"),
+        "ReflectionParameter::getType()",
+    ),
+    (
+        ("reflectionparameter", "isarray"),
+        "ReflectionParameter::getType()",
+    ),
+    (
+        ("reflectionparameter", "iscallable"),
+        "ReflectionParameter::getType()",
+    ),
+];
+
+// ---------------------------------------------------------------------------
 // Kind configuration.
 // ---------------------------------------------------------------------------
 
@@ -463,10 +568,16 @@ enum DeprecationSource {
 /// this; the kind never appears as an `if` in the lifecycle logic except for the
 /// deprecation source.
 struct KindSpec {
-    /// Human label, also the render header selector: `"function"` / `"constant"`.
+    /// Human label, also the render header selector: `"function"` / `"constant"`
+    /// / `"class"`.
     label: &'static str,
-    /// Reflection-cache `_type` discriminator.
-    refl_type: &'static str,
+    /// Reflection-cache `_type` discriminators for this kind. Classes collapse
+    /// `PHPClass`, `PHPInterface` and `PHPEnum` into one table.
+    cache_types: &'static [&'static str],
+    /// The stub metadata file's `_type` discriminator. Differs from
+    /// [`KindSpec::cache_types`] for classes: `StubsClasses.json` labels every
+    /// class-like (including interfaces and enums) as `PHPClass`.
+    stub_type: &'static str,
     /// Stub metadata file under `tests/cache/`.
     stub_cache_file: &'static str,
     /// Output file under `src/generated/`.
@@ -497,7 +608,8 @@ struct KindSpec {
 fn function_spec() -> KindSpec {
     KindSpec {
         label: "function",
-        refl_type: "PHPFunction",
+        cache_types: &["PHPFunction"],
+        stub_type: "PHPFunction",
         stub_cache_file: "StubsFunctions.json",
         out_file: "functions.rs",
         name_policy: NamePolicy::CaseInsensitive,
@@ -535,7 +647,8 @@ fn function_spec() -> KindSpec {
 fn constant_spec() -> KindSpec {
     KindSpec {
         label: "constant",
-        refl_type: "PHPConstant",
+        cache_types: &["PHPConstant"],
+        stub_type: "PHPConstant",
         stub_cache_file: "StubsConstants.json",
         out_file: "constants.rs",
         name_policy: NamePolicy::CaseSensitive,
@@ -559,6 +672,34 @@ fn constant_spec() -> KindSpec {
             deprecated: CONSTANT_DEPRECATIONS,
         },
         compiler_optimized: &[],
+        corroborate_stub_removed: true,
+    }
+}
+
+fn class_spec() -> KindSpec {
+    KindSpec {
+        label: "class",
+        cache_types: &["PHPClass", "PHPInterface", "PHPEnum"],
+        stub_type: "PHPClass",
+        stub_cache_file: "StubsClasses.json",
+        out_file: "classes.rs",
+        name_policy: NamePolicy::CaseInsensitive,
+        new_sniff: "PHPCompatibility/Sniffs/Classes/NewClassesSniff.php",
+        removed_sniff: "PHPCompatibility/Sniffs/Classes/RemovedClassesSniff.php",
+        new_sniff_sanity: &[("weakreference", (7, 4)), ("fiber", (8, 1))],
+        removed_sniff_sanity: &[("hw_api", (5, 2)), ("imap\\connection", (8, 4))],
+        added_overrides: CLASS_ADDED_OVERRIDES,
+        removed_overrides: CLASS_REMOVED_OVERRIDES,
+        added_artefact_exts: CLASS_ADDED_ARTIFACT_EXTENSIONS,
+        removed_artefact_exts: CLASS_REMOVED_ARTIFACT_EXTENSIONS,
+        replacements: CLASS_REPLACEMENTS,
+        deprecation: DeprecationSource::Editorial {
+            deprecated: CLASS_DEPRECATIONS,
+        },
+        compiler_optimized: &[],
+        // The stub @removed agrees with our derived removed for classes (the DOM
+        // overrides match it; artefact classes carry no @removed), so the bonus
+        // check is enabled.
         corroborate_stub_removed: true,
     }
 }
@@ -641,20 +782,21 @@ fn since_is_prefloor(since: &Option<String>) -> bool {
 /// The set of normalised symbol names in one reflection cache.
 fn symbol_ids(
     cache: &Path,
-    refl_type: &str,
+    cache_types: &[&str],
     policy: NamePolicy,
 ) -> Result<HashSet<String>, Box<dyn Error>> {
-    Ok(symbol_flags(cache, refl_type, policy)?
+    Ok(symbol_flags(cache, cache_types, policy)?
         .into_keys()
         .collect())
 }
 
 /// Normalised symbol name -> whether the cache flags it deprecated, for one
-/// reflection cache. A name appearing more than once is deprecated if any entry
-/// is, so the union over duplicates never loses a flag.
+/// reflection cache, over all of `cache_types` (classes union PHPClass,
+/// PHPInterface and PHPEnum). A name appearing more than once is deprecated if
+/// any entry is, so the union over duplicates never loses a flag.
 fn symbol_flags(
     cache: &Path,
-    refl_type: &str,
+    cache_types: &[&str],
     policy: NamePolicy,
 ) -> Result<HashMap<String, bool>, Box<dyn Error>> {
     let text =
@@ -663,7 +805,7 @@ fn symbol_flags(
         serde_json::from_str(&text).map_err(|e| format!("parsing {}: {e}", cache.display()))?;
     let mut map = HashMap::new();
     for e in entries {
-        if e.kind != refl_type {
+        if !cache_types.contains(&e.kind.as_str()) {
             continue;
         }
         if let Some(id) = e.id {
@@ -685,7 +827,7 @@ fn cache_deprecated(range_flags: &[(&str, HashMap<String, bool>)], name: &str) -
 /// `@removed`.
 fn stub_info(
     stub_cache: &Path,
-    refl_type: &str,
+    stub_type: &str,
     policy: NamePolicy,
 ) -> Result<HashMap<String, StubInfo>, Box<dyn Error>> {
     let text = std::fs::read_to_string(stub_cache)
@@ -694,7 +836,7 @@ fn stub_info(
         .map_err(|e| format!("parsing {}: {e}", stub_cache.display()))?;
     let mut map = HashMap::new();
     for e in entries {
-        if e.kind != refl_type {
+        if e.kind != stub_type {
             continue;
         }
         let (Some(id), Some(path)) = (e.id, e.source_path) else {
@@ -794,6 +936,10 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     generate(&function_spec(), &stubs, &phpcompat, &actual_sha)?;
     generate(&constant_spec(), &stubs, &phpcompat, &actual_sha)?;
+    // Methods reuse the class records (for each method's class added/removed and
+    // extension), so classes must be generated first.
+    let class_records = generate(&class_spec(), &stubs, &phpcompat, &actual_sha)?;
+    generate_methods(&stubs, &class_records, &actual_sha)?;
     Ok(())
 }
 
@@ -803,19 +949,19 @@ fn generate(
     stubs: &Path,
     phpcompat: &Path,
     actual_sha: &str,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<Vec<Record>, Box<dyn Error>> {
     let policy = spec.name_policy;
 
     // Per-version name->isDeprecated flags (the flag is meaningful for functions
     // only; constants default false), the name sets derived from their keys, and
     // the union over the reported range.
-    let baseline = symbol_ids(&cache_path(stubs, BASELINE), spec.refl_type, policy)?;
+    let baseline = symbol_ids(&cache_path(stubs, BASELINE), spec.cache_types, policy)?;
     let range_flags: Vec<(&str, HashMap<String, bool>)> = RANGE
         .iter()
         .map(|v| {
             Ok((
                 *v,
-                symbol_flags(&cache_path(stubs, v), spec.refl_type, policy)?,
+                symbol_flags(&cache_path(stubs, v), spec.cache_types, policy)?,
             ))
         })
         .collect::<Result<_, Box<dyn Error>>>()?;
@@ -830,7 +976,7 @@ fn generate(
 
     let stub = stub_info(
         &stubs.join("tests/cache").join(spec.stub_cache_file),
-        spec.refl_type,
+        spec.stub_type,
         policy,
     )?;
     let co_set: HashSet<&str> = spec.compiler_optimized.iter().copied().collect();
@@ -930,8 +1076,12 @@ fn generate(
 
         // Artefact correction: an in-range diff for a symbol whose whole
         // extension is absent at the floor, with no in-range @since, is a build
-        // artefact for a pre-floor symbol -> None.
+        // artefact for a pre-floor symbol -> None. Only applies to a symbol with a
+        // real stub extension: an unmapped symbol (a class-like interface or enum
+        // absent from StubsClasses.json) is not extension-conditional, so its diff
+        // is authoritative and must not be nulled (e.g. Stringable, added 8.0).
         let corrected = if diff_added.is_some()
+            && info.is_some()
             && !floor_exts.contains(&extension)
             && since_is_prefloor(&since)
         {
@@ -1283,7 +1433,7 @@ fn generate(
             unmapped_extension
         );
     }
-    Ok(())
+    Ok(records)
 }
 
 /// Check each cache-derived `added` against PHPCompatibility's New*Sniff (facts
@@ -1507,6 +1657,338 @@ fn header(spec: &KindSpec, n: usize, sha: &str) -> String {
             sha = sha,
             n = n,
         ),
+        "class" => format!(
+            "// @generated by tools/regenerate - DO NOT EDIT BY HAND.\n\
+             //\n\
+             // Native PHP class, interface and enum availability for PHP 7.4\n\
+             // through 8.5, collapsed into one case-insensitive table.\n\
+             //\n\
+             // Names and per-version presence (so added/removed): JetBrains\n\
+             // phpstorm-stubs (Apache-2.0) @ {sha}, reflection caches\n\
+             // tests/cache/Reflection*.json (PHPClass, PHPInterface, PHPEnum),\n\
+             // cross-checked against PHPCompatibility (LGPL-3.0, version facts\n\
+             // only, never copied).\n\
+             // Extensions and the corroborating @since/@removed: the same repo's\n\
+             // tests/cache/StubsClasses.json.\n\
+             // deprecated and replacement: editorial, from the PHP manual (terse\n\
+             // labels, never copied prose). The reflection caches carry no usable\n\
+             // class deprecation flag and PHPCompatibility ships no class-\n\
+             // deprecation sniff, so neither is machine-derived. See NOTICE.\n\
+             // Class names are case-insensitive: stored and matched lowercased.\n\
+             // compiler_optimized is always false for classes.\n\
+             //\n\
+             // Regenerate with `cargo run -p regenerate --\n\
+             // <phpstorm-stubs checkout> <phpcompatibility checkout>`; see NOTICE and\n\
+             // PLAN.md. {n} classes.\n\n\
+             use crate::{{Availability, PhpVersion}};\n\n\
+             // One row per class keeps the table reviewable and diff-friendly on\n\
+             // regeneration; rustfmt would otherwise explode each row across lines.\n\
+             #[rustfmt::skip]\n\
+             pub(crate) static CLASSES: &[(&str, Availability)] = &[\n",
+            sha = sha,
+            n = n,
+        ),
         other => unreachable!("unknown kind label {other}"),
     }
+}
+
+/// One class entry from `StubsClasses.json`, with its declared methods. Methods
+/// are declared-only here (the stub's class body), never the inherited-inclusive
+/// reflection method list, so an inherited method is not attributed to a child.
+#[derive(Deserialize)]
+struct StubClassEntry {
+    #[serde(rename = "_type")]
+    kind: String,
+    id: Option<String>,
+    #[serde(default)]
+    methods: Vec<StubMethod>,
+}
+
+/// One declared method: its name, `@since`/`@removed`, and the deprecation flag
+/// (which carries no version, so the version comes from [`METHOD_DEPRECATIONS`]).
+#[derive(Deserialize)]
+struct StubMethod {
+    name: Option<String>,
+    #[serde(rename = "sinceVersion")]
+    since_version: Option<String>,
+    #[serde(rename = "removedVersion")]
+    removed_version: Option<String>,
+    #[serde(rename = "isDeprecated", default)]
+    is_deprecated: bool,
+}
+
+/// An accumulating method row, merged across a class's duplicate (version-variant)
+/// method declarations.
+struct MethodRow {
+    added: Option<(u8, u8)>,
+    removed: Option<(u8, u8)>,
+    deprecated: Option<(u8, u8)>,
+    replacement: Option<&'static str>,
+    extension: String,
+    flagged: bool,
+}
+
+/// Parse a stub `@since`/`@removed` string to an in-range version, or `None` for
+/// an empty, pre-floor, post-range or unparseable value.
+fn stub_version(raw: &Option<String>) -> Option<(u8, u8)> {
+    match raw {
+        Some(s) if !s.trim().is_empty() => match parse_version_lenient(s.trim()) {
+            Some(mm) if mm < (7, 4) => None,
+            Some(mm) if mm <= (8, 5) => Some(mm),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// Combine two `added` values: `None` means pre-floor (the earliest possible), so
+/// the merged introduction is the earliest of the variants.
+fn merge_added(a: Option<(u8, u8)>, b: Option<(u8, u8)>) -> Option<(u8, u8)> {
+    match (a, b) {
+        (None, _) | (_, None) => None,
+        (Some(x), Some(y)) => Some(x.min(y)),
+    }
+}
+
+/// Combine two `removed` values: `None` means never removed (the latest
+/// possible), so a method present in any variant stays present; otherwise it is
+/// gone only after the last variant's removal.
+fn merge_removed(a: Option<(u8, u8)>, b: Option<(u8, u8)>) -> Option<(u8, u8)> {
+    match (a, b) {
+        (None, _) | (_, None) => None,
+        (Some(x), Some(y)) => Some(x.max(y)),
+    }
+}
+
+/// Emit `src/generated/methods.rs` from the declared methods in
+/// `StubsClasses.json`. A method is keyed by `(class_lc, method_lc)`; its `added`
+/// is its own `@since` or, when absent, its class's `added`; its `removed` is its
+/// `@removed` capped by the class's `removed` (a method cannot outlive its class).
+/// PHPCompatibility ships no method sniff, so there is no second-source check:
+/// availability rests on the single authoritative stub `@since`/`@removed`, and
+/// deprecation is the reviewed [`METHOD_DEPRECATIONS`] list. Only methods of
+/// classes already in the class table are emitted.
+fn generate_methods(
+    stubs: &Path,
+    class_records: &[Record],
+    actual_sha: &str,
+) -> Result<(), Box<dyn Error>> {
+    let policy = NamePolicy::CaseInsensitive;
+    let class_added: HashMap<&str, Option<(u8, u8)>> = class_records
+        .iter()
+        .map(|r| (r.name.as_str(), r.added))
+        .collect();
+    let class_removed: HashMap<&str, Option<(u8, u8)>> = class_records
+        .iter()
+        .map(|r| (r.name.as_str(), r.removed))
+        .collect();
+    let class_ext: HashMap<&str, &str> = class_records
+        .iter()
+        .map(|r| (r.name.as_str(), r.extension.as_str()))
+        .collect();
+    let dep_map: HashMap<MethodKey, (u8, u8)> = METHOD_DEPRECATIONS.iter().copied().collect();
+    let repl_map: HashMap<MethodKey, &str> = METHOD_REPLACEMENTS.iter().copied().collect();
+
+    let path = stubs.join("tests/cache/StubsClasses.json");
+    let text =
+        std::fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))?;
+    let entries: Vec<StubClassEntry> =
+        serde_json::from_str(&text).map_err(|e| format!("parsing {}: {e}", path.display()))?;
+
+    let mut merged: BTreeMap<(String, String), MethodRow> = BTreeMap::new();
+    let mut flagged_total = 0usize;
+    let mut excluded = 0usize;
+    for e in entries {
+        if e.kind != "PHPClass" {
+            continue;
+        }
+        let Some(id) = e.id else { continue };
+        let cls = policy.normalise(&id);
+        // Only methods of classes already in the class table.
+        let Some(&cadded) = class_added.get(cls.as_str()) else {
+            continue;
+        };
+        let cremoved = class_removed.get(cls.as_str()).copied().flatten();
+        let cext = class_ext.get(cls.as_str()).copied().unwrap_or("unknown");
+        for m in e.methods {
+            let Some(mname) = m.name else { continue };
+            let mkey = mname.to_ascii_lowercase();
+            // added: the method's own @since, else the class's added.
+            let m_added = match &m.since_version {
+                Some(s) if !s.trim().is_empty() => stub_version(&m.since_version),
+                _ => cadded,
+            };
+            // removed: the method's own @removed, capped by the class's removal.
+            // A pre-floor @removed means the method was gone before the range, so
+            // it is excluded (None would wrongly read as "never removed").
+            let method_removed = match &m.removed_version {
+                Some(s) if !s.trim().is_empty() => match parse_version_lenient(s.trim()) {
+                    Some(mm) if mm < (7, 4) => {
+                        excluded += 1;
+                        continue;
+                    }
+                    Some(mm) if mm <= (8, 5) => Some(mm),
+                    // Removed after the range: still present within 7.4..8.5.
+                    _ => None,
+                },
+                _ => None,
+            };
+            let m_removed = merge_removed_cap(method_removed, cremoved);
+            if m.is_deprecated {
+                flagged_total += 1;
+            }
+            let key = (cls.as_str(), mkey.as_str());
+            let deprecated = dep_map.get(&key).copied();
+            let replacement = if deprecated.is_some() {
+                repl_map.get(&key).copied()
+            } else {
+                None
+            };
+            let row = MethodRow {
+                added: m_added,
+                removed: m_removed,
+                deprecated,
+                replacement,
+                extension: cext.to_string(),
+                flagged: m.is_deprecated,
+            };
+            merged
+                .entry((cls.clone(), mkey))
+                .and_modify(|existing| {
+                    existing.added = merge_added(existing.added, m_added);
+                    existing.removed = merge_removed(existing.removed, m_removed);
+                    existing.flagged = existing.flagged || m.is_deprecated;
+                })
+                .or_insert(row);
+        }
+    }
+
+    // Gate: every curated deprecation must name a method the stub actually
+    // declares and flags deprecated (no stale or unsupported curation).
+    let mut bad_curation: Vec<String> = Vec::new();
+    for ((cls, method), _) in METHOD_DEPRECATIONS {
+        match merged.get(&((*cls).to_string(), (*method).to_string())) {
+            None => bad_curation.push(format!(
+                "{cls}::{method} (no such declared method in table)"
+            )),
+            Some(row) if !row.flagged => bad_curation.push(format!(
+                "{cls}::{method} (stub does not flag it deprecated)"
+            )),
+            Some(_) => {}
+        }
+    }
+    bad_curation.sort();
+    fail_if_any(
+        &bad_curation,
+        "method_deprecation_curation",
+        "METHOD_DEPRECATIONS entr(y/ies) not matching a flagged declared method; fix the curation",
+    )?;
+
+    // Gate: lifecycle ordering must hold for every row.
+    let mut lifecycle: Vec<String> = Vec::new();
+    for ((cls, method), row) in &merged {
+        for (lo, hi, what) in [
+            (row.added, row.deprecated, "added>deprecated"),
+            (row.deprecated, row.removed, "deprecated>removed"),
+            (row.added, row.removed, "added>removed"),
+        ] {
+            if let (Some(a), Some(b)) = (lo, hi) {
+                if a > b {
+                    lifecycle.push(format!("{cls}::{method}: {what} ({a:?} > {b:?})"));
+                }
+            }
+        }
+    }
+    lifecycle.sort();
+    fail_if_any(
+        &lifecycle,
+        "method_lifecycle",
+        "method(s) with added>deprecated, deprecated>removed or added>removed",
+    )?;
+
+    let out_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../src/generated/methods.rs");
+    std::fs::write(&out_path, render_methods(&merged, actual_sha))?;
+
+    let deprecated_count = merged.values().filter(|r| r.deprecated.is_some()).count();
+    eprintln!("method: no PHPCompatibility cross-check (single-source stub @since/@removed)");
+    eprintln!(
+        "generated {} methods -> {}",
+        merged.len(),
+        out_path.display()
+    );
+    eprintln!(
+        "  flagged deprecated by the stub: {flagged_total}; curated with a version: \
+         {deprecated_count}; excluded (removed at or before floor): {excluded}"
+    );
+    Ok(())
+}
+
+/// Cap a method's `@removed` by its class's removal: a method cannot outlive its
+/// class, so a still-listed method of a removed class inherits the class removal.
+fn merge_removed_cap(
+    method_removed: Option<(u8, u8)>,
+    class_removed: Option<(u8, u8)>,
+) -> Option<(u8, u8)> {
+    match (method_removed, class_removed) {
+        (None, c) => c,
+        (m, None) => m,
+        (Some(m), Some(c)) => Some(m.min(c)),
+    }
+}
+
+/// Render `src/generated/methods.rs`: a sorted `(class, method, Availability)`
+/// slice, binary-searchable by the `(class, method)` key.
+fn render_methods(merged: &BTreeMap<(String, String), MethodRow>, sha: &str) -> String {
+    let mut out = String::new();
+    out.push_str(&format!(
+        "// @generated by tools/regenerate - DO NOT EDIT BY HAND.\n\
+         //\n\
+         // Native PHP method availability for PHP 7.4 through 8.5, keyed by\n\
+         // (class, method), both lowercased.\n\
+         //\n\
+         // Declared methods from JetBrains phpstorm-stubs (Apache-2.0) @ {sha},\n\
+         // tests/cache/StubsClasses.json (the declared class body only, never the\n\
+         // inherited-inclusive reflection method list). A method's added is its\n\
+         // @since or its class's added; removed is its @removed capped by the\n\
+         // class's removal. PHPCompatibility ships no method sniff, so method\n\
+         // availability rests on the single authoritative stub @since/@removed\n\
+         // with no second-source cross-check.\n\
+         // deprecated and replacement: editorial, from the PHP manual (the stub\n\
+         // flags a method deprecated but carries no version); see NOTICE.\n\
+         // compiler_optimized is always false for methods.\n\
+         //\n\
+         // Regenerate with `cargo run -p regenerate --\n\
+         // <phpstorm-stubs checkout> <phpcompatibility checkout>`; see NOTICE and\n\
+         // PLAN.md. {n} methods.\n\n\
+         use crate::{{Availability, PhpVersion}};\n\n\
+         // One row per method keeps the table reviewable and diff-friendly on\n\
+         // regeneration; rustfmt would otherwise explode each row across lines.\n\
+         #[rustfmt::skip]\n\
+         pub(crate) static METHODS: &[(&str, &str, Availability)] = &[\n",
+        sha = sha,
+        n = merged.len(),
+    ));
+    for ((cls, method), row) in merged {
+        let version = |v: Option<(u8, u8)>| match v {
+            Some((major, minor)) => format!("Some(PhpVersion::minor({major}, {minor}))"),
+            None => "None".to_string(),
+        };
+        let replacement = match row.replacement {
+            Some(s) => format!("Some({s:?})"),
+            None => "None".to_string(),
+        };
+        out.push_str(&format!(
+            "    ({:?}, {:?}, Availability {{ added: {}, deprecated: {}, removed: {}, replacement: {}, extension: {:?}, compiler_optimized: {} }}),\n",
+            cls,
+            method,
+            version(row.added),
+            version(row.deprecated),
+            version(row.removed),
+            replacement,
+            row.extension,
+            false,
+        ));
+    }
+    out.push_str("];\n");
+    out
 }

@@ -26,10 +26,11 @@ Every symbol resolves to an `Availability`:
 
 ```text
 Availability {
-    added:      Option<PhpVersion>,   // first version it appeared in
-    deprecated: Option<PhpVersion>,   // soft-deprecation version, if any
-    removed:    Option<PhpVersion>,   // removal version, if any
-    extension:  &'static str,         // "core", "mbstring", "pdo", ...
+    added:       Option<PhpVersion>,  // minimum: first version it appeared in
+    deprecated:  Option<PhpVersion>,  // soft-deprecation version, if any
+    removed:     Option<PhpVersion>,  // maximum: first version it is gone from
+    replacement: Option<&str>,        // successor when deprecated, else None
+    extension:   &'static str,        // phpstorm-stubs folder, e.g. "Core", "standard", "mbstring"
     compiler_optimized: bool,         // Zend special-opcode set (functions)
 }
 ```
@@ -63,21 +64,22 @@ the end of M1.
 - [x] A handful of hand-written entries so the API compiles and is exercised by a test
 
 ### M1 - Functions MVP (first usable release)
-- [ ] Decide and pin the data source (see PLAN for the sourcing strategy)
-- [ ] Offline generator that emits `generated/functions.rs` from the pinned source
-- [ ] `function_availability(name)` + `is_function(name)` + `is_function_available(name, v)`
-- [ ] Case-insensitive function-name lookup, strips a leading `\`
-- [ ] O(1)/O(log n) lookup (phf or sorted static slice + binary search)
-- [ ] Spot-check tests locking real facts (str_contains=8.0, mb_str_split=7.4, ...)
-- [ ] `compiler_optimized` flag populated from the PHP CS Fixer set
-- [ ] Integration snippet in the README and PLAN
-- [ ] Tag a `0.1.0`
+- [x] Decide and pin the data source (see PLAN for the sourcing strategy)
+- [x] Offline generator that emits `generated/functions.rs` from the pinned source
+- [x] `function_availability(name)` + `is_function(name)` + `is_function_available(name, v)`
+- [x] Case-insensitive function-name lookup, strips a leading `\`
+- [x] O(1)/O(log n) lookup (phf or sorted static slice + binary search)
+- [x] Spot-check tests locking real facts (str_contains=8.0, mb_str_split=7.4, ...)
+- [x] `compiler_optimized` flag populated from the PHP CS Fixer set
+- [x] Integration snippet in the README and PLAN
+- [x] Tag a `0.1.0`
 
-### M2 - Function deprecation and removal
+### M2 - Function deprecation, removal and replacement
 - [ ] `deprecated` / `removed` populated for functions
+- [ ] `replacement` populated for deprecated functions (successor, or None)
 - [ ] `is_function_deprecated_at(name, v)`
-- [ ] Facts: create_function removed 8.0, money_format removed 8.0, utf8_encode deprecated 8.2
-- [ ] Invariant tests: `added <= deprecated <= removed` where present
+- [ ] Facts: create_function removed 8.0, money_format removed 8.0, utf8_encode deprecated 8.2 in favour of mb_convert_encoding
+- [ ] Invariant tests: `added <= deprecated <= removed` where present; `replacement` only where `deprecated`
 
 ### M3 - Constants
 - [ ] `generated/constants.rs` from the same pipeline
@@ -99,13 +101,19 @@ the end of M1.
 ## How a consumer uses it
 
 ```rust
-use php_native_symbols::{function_availability, PhpVersion};
+use php_native_symbols::{function_availability, is_function_available, PhpVersion};
 
 let v = PhpVersion::new(8, 1, 0); // the PHP version being analysed
-if let Some(a) = function_availability("str_contains") {
-    let available = a.added.map_or(true, |added| added <= v)
-        && a.removed.map_or(true, |removed| v < removed);
-    // ... gate the rule on `available`
+
+// Simple availability gate. M1 covers `added`; `removed` lands in M2.
+if is_function_available("str_contains", v) {
+    // ... str_contains exists at 8.1, gate the rule accordingly
+}
+
+// Or inspect the full record (names are normalised: a leading `\` is stripped
+// and the lookup is case-insensitive).
+if let Some(a) = function_availability("\\STR_CONTAINS") {
+    let _ = (a.added, a.extension, a.compiler_optimized);
 }
 ```
 

@@ -6,7 +6,8 @@ available in this PHP version?**
 It ships a verified lookup table of PHP's native (built-in) functions,
 constants, classes and methods, each tagged with the version it was added,
 deprecated and removed. No code analysis, no runtime PHP, just data plus a
-tiny query API.
+query API over it: per-symbol lookups, per-version sets and diffs, and a
+batch compatibility report.
 
 ## Why this exists
 
@@ -55,20 +56,35 @@ and `FILTER_VALIDATE_BOOLEAN` (predates the floor) are distinct entries.
 
 ## Status
 
-Released: **v1.0.0 is on [crates.io](https://crates.io/crates/php-native-symbols)**
-([docs](https://docs.rs/php-native-symbols)). Functions, constants, classes
-(interfaces, enums) and methods all ship availability, deprecation, removal and
-an editorial deprecation `replacement`, with constant names handled
-case-sensitively and methods attributed declared-only. Every row carries a real
-extension; bulk iterators and `is_core_extension` let a consumer filter to a
-default build; and a shared invariant suite plus a `PhpVersion` proptest guard
-every table. The milestone history is in the checklists below; provenance is in
+Released: **v1.5.0 is on [crates.io](https://crates.io/crates/php-native-symbols)**
+([docs](https://docs.rs/php-native-symbols)). The data core shipped by 1.0.0:
+functions, constants, classes (interfaces, enums) and declared methods, each
+with availability, deprecation, removal, an editorial `replacement` and a real
+extension. Versions 1.1.0 through 1.5.0 added a query layer over the same data,
+for version-aware tools such as static analysers and linters:
+
+- **Per-version sets and diffs**: `functions_available_at`, the
+  `*_added_in` / `*_deprecated_as_of` / `*_removed_by` reverse iterators, and
+  `*_changes_between` change-sets between two versions.
+- **Batch compatibility**: `compatibility_issue_at` and `compatibility_report_at`
+  classify a set of used symbols against a target PHP version (not-yet-available,
+  removed, deprecated, unknown) and compute the viable version window.
+- **Callable methods**: `callable_method_availability` resolves a method through
+  the class hierarchy (parents and interfaces), alongside the declared-only API.
+- **Inventory and trust**: canonical-name resolution (`resolve_*`), an extension
+  inventory, `source_manifest` / `supported_versions`, and kind-level
+  `availability_provenance`.
+- **Optional `serde`** (off by default) for serialising the public types.
+
+Constant names are case-sensitive; methods are declared-only unless the callable
+API is used. A shared invariant suite, a `PhpVersion` proptest and a `cargo-fuzz`
+harness guard the data and the parsers, at 100% test coverage. Provenance is in
 [`NOTICE`](NOTICE) and the regeneration runbook in
 [`tools/regenerate/README.md`](tools/regenerate/README.md).
 
 ## Milestones (build history)
 
-Built bottom-up; each version shipped on its own (git tags `v0.1.0`-`v1.0.0`):
+Built bottom-up; each version shipped on its own (git tags `v0.1.0`-`v1.5.0`):
 
 - **0.1.0** (M0/M1) - scaffolding (`PhpVersion`, `Availability`) and the
   functions MVP: `function_availability` and the `is_function*` queries over a
@@ -79,6 +95,19 @@ Built bottom-up; each version shipped on its own (git tags `v0.1.0`-`v1.0.0`):
 - **1.0.0** (M5) - hardening and release: a real extension on every row,
   `is_core_extension`, bulk iterators, a cross-table invariant suite and a
   `PhpVersion` proptest, a documented regeneration runbook, and full provenance.
+- **1.1.0** - per-version availability iterators: `functions_available_at` and
+  the constant, class and method variants.
+- **1.1.1** - a public API test suite, a `cargo-fuzz` harness and 100% coverage.
+- **1.2.0** - the query layer: `*_changes_between` change-sets, the
+  `*_added_in` / `*_deprecated_as_of` / `*_removed_by` reverse iterators,
+  canonical-name resolution (`resolve_*`), the source manifest, an extension
+  inventory and the shared `SymbolRef` / `ResolvedSymbol` types. Lookups became
+  allocation-free.
+- **1.3.0** - the batch compatibility report (`compatibility_issue_at`,
+  `compatibility_report_at`, `compatibility_window`).
+- **1.4.0** - callable (inherited) method lookup over a generated
+  class-hierarchy table, alongside the unchanged declared-only API.
+- **1.5.0** - kind-level availability provenance and an optional `serde` feature.
 
 ## How a consumer uses it
 
@@ -156,6 +185,59 @@ for (class, method) in methods_available_at(v) {
 
 A consumer with its own version type converts it to this crate's `PhpVersion`
 at the call boundary, keeping the crate free of any toolchain dependency.
+
+## The query layer
+
+On top of the per-symbol lookups, a few higher-level queries serve version-aware
+tools (static analysers, linters, upgraders) directly.
+
+**Batch compatibility.** Feed the symbols your tool already resolved from an AST,
+plus a target version, and get structured issues back; your tool keeps its own
+spans and renders its own diagnostics:
+
+```rust
+use php_native_symbols::{compatibility_issue_at, CompatibilityIssue, SymbolRef, PhpVersion};
+
+let target = PhpVersion::new(8, 0, 0);
+if let Some(CompatibilityIssue::RemovedIn { version, .. }) =
+    compatibility_issue_at(SymbolRef::Function("create_function"), target)
+{
+    let _ = version; // create_function was removed in 8.0
+}
+// compatibility_report_at(symbols, target) collects issues over a whole set and
+// adds a viable-version window: the minimum required version plus any upper
+// bound a removed symbol imposes.
+```
+
+**Callable (inherited) methods.** The declared-only `method_availability` answers
+"does this class itself declare the method"; `callable_method_availability` walks
+parents and interfaces to answer "can an instance call it":
+
+```rust
+use php_native_symbols::{callable_method_availability, method_availability};
+
+// SplStack inherits push from SplDoublyLinkedList rather than declaring it.
+assert!(method_availability("SplStack", "push").is_none());
+let callable = callable_method_availability("SplStack", "push").unwrap();
+assert_eq!(callable.declaring_class, "spldoublylinkedlist");
+```
+
+**Diffs and as-of sets.** `function_changes_between(from, to)` lists what was
+added, deprecated or removed between two versions; `functions_added_in`,
+`functions_deprecated_as_of` and `functions_removed_by` (with constant, class and
+method variants) give the as-of sets.
+
+**Inventory and trust.** `resolve_function` (and the constant, class and method
+variants) return the canonical table key for a name; `extensions`,
+`functions_in_extension` and `extension_requirement` describe extension
+membership; `source_manifest` and `supported_versions` expose the coverage range
+and pinned sources; and `availability_provenance` reports how each kind of fact
+is sourced.
+
+### Cargo features
+
+- `serde` (off by default): derives `Serialize` (and `Deserialize` on the owned
+  types) for the public data types. The default build has no dependencies.
 
 ## Data provenance and licences
 

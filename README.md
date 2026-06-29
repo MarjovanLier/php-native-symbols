@@ -56,7 +56,7 @@ and `FILTER_VALIDATE_BOOLEAN` (predates the floor) are distinct entries.
 
 ## Status
 
-Released: **v1.5.1 is the current crate version in `Cargo.toml`**
+Released: **v1.5.2 is the current crate version in `Cargo.toml`**
 ([crates.io](https://crates.io/crates/php-native-symbols),
 [docs](https://docs.rs/php-native-symbols)). The data core shipped by 1.0.0:
 functions, constants, classes (interfaces, enums) and declared methods, each
@@ -86,7 +86,7 @@ harness guard the data and the parsers, at 100% test coverage. Provenance is in
 ## Milestones (build history)
 
 Built bottom-up; each feature milestone shipped on its own (git tags
-`v0.1.0`-`v1.5.0`). The current `Cargo.toml` version is `1.5.1`:
+`v0.1.0`-`v1.5.0`). The current `Cargo.toml` version is `1.5.2`:
 
 - **0.1.0** (M0/M1) - scaffolding (`PhpVersion`, `Availability`) and the
   functions MVP: `function_availability` and the `is_function*` queries over a
@@ -111,6 +111,7 @@ Built bottom-up; each feature milestone shipped on its own (git tags
   class-hierarchy table, alongside the unchanged declared-only API.
 - **1.5.0** - kind-level availability provenance and an optional `serde` feature.
 - **1.5.1** - maintenance release over the same public API surface.
+- **1.5.2** - documentation refresh; the published library API is unchanged from 1.5.1.
 
 ## How a consumer uses it
 

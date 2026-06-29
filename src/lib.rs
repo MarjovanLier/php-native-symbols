@@ -22,6 +22,19 @@
 //! and [`methods`] yield every row, and [`is_core_extension`] flags whether an
 //! [`Availability::extension`] is one a default PHP build ships (an editorial
 //! default-build assumption, not a runtime guarantee).
+//!
+//! On top of the per-symbol lookups, a query layer serves version-aware tools.
+//! [`compatibility_issue_at`] and [`compatibility_report_at`] classify a set of
+//! used symbols against a target version (via [`SymbolRef`]) and report a viable
+//! [`CompatibilityWindow`]. [`callable_method_availability`] resolves a method
+//! through the class hierarchy (parents and interfaces), beside the
+//! declared-only [`method_availability`]. [`function_changes_between`] and the
+//! `*_added_in` / `*_deprecated_as_of` / `*_removed_by` iterators give
+//! per-version diffs and sets; [`resolve_function`] and its kin return the
+//! canonical table key; [`extensions`] and [`source_manifest`] expose the
+//! extension inventory and the pinned data provenance; and
+//! [`availability_provenance`] reports how each kind of fact is sourced. An
+//! optional `serde` feature (off by default) serialises the public types.
 
 #![forbid(unsafe_code)]
 // cargo-llvm-cov sets cfg(coverage_nightly) on its nightly run; there the

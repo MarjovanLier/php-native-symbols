@@ -1019,7 +1019,12 @@ Acceptance criteria:
 - Benchmarks included in the pull request or release notes before advertising
   the change.
 
-## Roadmap
+## Historical Roadmap
+
+This section is retained as build history and design context. It was written
+from the published 1.1.1 baseline; most items through 1.5.0 have shipped and no
+longer describe future work. Treat the sections above as the durable design
+record, and use the README plus `Cargo.toml` for current release status.
 
 The order below is value-to-effort for a Mago-like consumer, starting from the
 published 1.1.1 baseline.

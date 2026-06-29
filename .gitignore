@@ -7,4 +7,3 @@
 
 # Library crate: lock file is not committed (resolved by the consumer)
 /Cargo.lock
-/graphify-out/

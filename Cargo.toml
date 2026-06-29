@@ -1,6 +1,6 @@
 [package]
 name = "php-native-symbols"
-version = "1.5.1"
+version = "1.5.2"
 edition = "2021"
 rust-version = "1.70"
 license = "MIT OR Apache-2.0"
@@ -11,7 +11,18 @@ keywords = ["php", "version", "compatibility", "availability", "static-analysis"
 categories = ["development-tools"]
 # Developer-only tooling, never part of the published crate. The generated
 # tables under src/generated/ are the shipped data and are packaged.
-exclude = [".claude", ".codex", ".github", "fuzz", "tools"]
+exclude = [
+    ".claude",
+    ".codex",
+    ".github",
+    ".gitignore",
+    ".mcp.json",
+    "AGENTS.md",
+    "Cargo.lock",
+    "fuzz",
+    "graphify-out",
+    "tools",
+]
 
 # cargo-llvm-cov sets cfg(coverage_nightly) on its nightly run (see the
 # coverage(off) attributes on the test modules). Declare it so the name is known

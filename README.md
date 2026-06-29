@@ -31,7 +31,7 @@ Availability {
     deprecated:  Option<PhpVersion>,  // soft-deprecation version, if any
     removed:     Option<PhpVersion>,  // maximum: first version it is gone from
     replacement: Option<&str>,        // successor when deprecated, else None
-    extension:   &'static str,        // phpstorm-stubs folder, e.g. "Core", "standard", "mbstring"
+    extension:   &'static str,        // phpstorm-stubs folder, for example "Core", "standard", "mbstring"
     compiler_optimized: bool,         // Zend special-opcode set (functions)
 }
 ```
@@ -56,8 +56,9 @@ and `FILTER_VALIDATE_BOOLEAN` (predates the floor) are distinct entries.
 
 ## Status
 
-Released: **v1.5.0 is on [crates.io](https://crates.io/crates/php-native-symbols)**
-([docs](https://docs.rs/php-native-symbols)). The data core shipped by 1.0.0:
+Released: **v1.5.1 is the current crate version in `Cargo.toml`**
+([crates.io](https://crates.io/crates/php-native-symbols),
+[docs](https://docs.rs/php-native-symbols)). The data core shipped by 1.0.0:
 functions, constants, classes (interfaces, enums) and declared methods, each
 with availability, deprecation, removal, an editorial `replacement` and a real
 extension. Versions 1.1.0 through 1.5.0 added a query layer over the same data,
@@ -84,7 +85,8 @@ harness guard the data and the parsers, at 100% test coverage. Provenance is in
 
 ## Milestones (build history)
 
-Built bottom-up; each version shipped on its own (git tags `v0.1.0`-`v1.5.0`):
+Built bottom-up; each feature milestone shipped on its own (git tags
+`v0.1.0`-`v1.5.0`). The current `Cargo.toml` version is `1.5.1`:
 
 - **0.1.0** (M0/M1) - scaffolding (`PhpVersion`, `Availability`) and the
   functions MVP: `function_availability` and the `is_function*` queries over a
@@ -108,6 +110,7 @@ Built bottom-up; each version shipped on its own (git tags `v0.1.0`-`v1.5.0`):
 - **1.4.0** - callable (inherited) method lookup over a generated
   class-hierarchy table, alongside the unchanged declared-only API.
 - **1.5.0** - kind-level availability provenance and an optional `serde` feature.
+- **1.5.1** - maintenance release over the same public API surface.
 
 ## How a consumer uses it
 

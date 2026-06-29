@@ -2,8 +2,9 @@
 
 Offline generator for the `php-native-symbols` data tables. It is a developer
 tool: it never ships in the published crate, and consumers never run it. It reads
-pinned upstream checkouts and rewrites the four committed tables under
-`src/generated/` (`functions.rs`, `constants.rs`, `classes.rs`, `methods.rs`).
+pinned upstream checkouts and rewrites the five committed tables under
+`src/generated/` (`functions.rs`, `constants.rs`, `classes.rs`, `hierarchy.rs`,
+`methods.rs`).
 
 The design rule: **the machine catches drift, not a human.** Every version that
 ships is either cross-checked against PHPCompatibility (functions, constants,
@@ -12,7 +13,8 @@ disagreement fails generation, so a bad table is never written.
 
 ## Inputs (pinned)
 
-The pinned revisions live as constants at the top of `src/main.rs`:
+The pinned revisions live in `src/source.rs`; the reviewed curation tables live
+in `src/curation.rs` and `src/methods.rs`:
 
 - `PHPSTORM_STUBS_SHA` - JetBrains phpstorm-stubs commit (Apache-2.0). Primary
   data: per-version reflection caches `tests/cache/Reflection<ver>.json` and the
@@ -22,6 +24,12 @@ The pinned revisions live as constants at the top of `src/main.rs`:
   read; no array, code or curated text is copied.
 - `PHP_CS_FIXER_TAG` - PHP-CS-Fixer release (MIT). The `@compiler_optimized`
   function set, embedded as `COMPILER_OPTIMIZED`.
+
+The generator is split by concern: `main.rs` handles CLI flow, `spec.rs`
+describes the symbol kinds, `lifecycle.rs` derives function, constant and class
+rows, `stubs.rs` reads phpstorm-stubs caches, `phpcompat.rs` parses the
+PHPCompatibility snippets, `methods.rs` emits hierarchy and method tables, and
+`render.rs` writes generated Rust.
 
 ## Running it
 
@@ -44,10 +52,11 @@ actual commit is then recorded in the generated headers).
 
 When a new PHP minor lands and upstream catches up:
 
-1. **Bump the pins** in `src/main.rs`: `PHPSTORM_STUBS_SHA`,
+1. **Bump the pins** in `src/source.rs`: `PHPSTORM_STUBS_SHA`,
    `PHPCOMPATIBILITY_SHA` and, if OPcache's special-opcode set changed,
-   `PHP_CS_FIXER_TAG` (re-copy the `@compiler_optimized` list from
-   `NativeFunctionInvocationFixer.php`). Update the same SHAs in `NOTICE`.
+   `PHP_CS_FIXER_TAG`. If the special-opcode set changed, re-copy the
+   `@compiler_optimized` list in `src/curation.rs` from
+   `NativeFunctionInvocationFixer.php`. Update the same SHAs in `NOTICE`.
 2. **Extend `RANGE`** with the new version label (for example add `"8.6"`).
    `BASELINE` stays at `7.3` (the absent floor baseline).
 3. **Regenerate** and read the failures. The gates are the review checklist:

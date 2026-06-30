@@ -5,14 +5,14 @@
     "semantic_hash": "abe3a6b73fd0e7f372fbd8c196f2cb71"
   },
   ".claude/settings.json": {
-    "mtime": 1782638879.8828676,
-    "ast_hash": "654c3a489f37870bbfbda9dfbf86deeb",
-    "semantic_hash": "654c3a489f37870bbfbda9dfbf86deeb"
+    "mtime": 1782761553.5873823,
+    "ast_hash": "4210523fc2763bca61b51c1be4a6b120",
+    "semantic_hash": ""
   },
   ".codex/hooks.json": {
-    "mtime": 1782752107.8093348,
-    "ast_hash": "a1e0f3e50697e02648fb447c43f9fc93",
-    "semantic_hash": "a1e0f3e50697e02648fb447c43f9fc93"
+    "mtime": 1782761193.3652394,
+    "ast_hash": "b4f0f6894cd7559e0e8c23b338b6346c",
+    "semantic_hash": ""
   },
   ".codex/hooks/cargo-quality.sh": {
     "mtime": 1782639132.91913,
@@ -175,8 +175,8 @@
     "semantic_hash": "06c11baf87ee27314c859b7132944e3b"
   },
   "README.md": {
-    "mtime": 1782760109.7641246,
-    "ast_hash": "e29754ff41e00536f71bdf9320cf7341",
+    "mtime": 1782794862.490145,
+    "ast_hash": "4f97c6b946f2479ecdc0a173ce99277b",
     "semantic_hash": ""
   },
   "docs/expansion-spec.md": {
@@ -247,6 +247,11 @@
   "tools/regenerate/src/spec.rs": {
     "mtime": 1782759980.845286,
     "ast_hash": "b64006af7ca46c86b9bc78c63c83e135",
+    "semantic_hash": ""
+  },
+  ".mcp.json": {
+    "mtime": 1782761549.3513165,
+    "ast_hash": "e6ef24fb2403f9e5577ef08e9851e301",
     "semantic_hash": ""
   }
 }

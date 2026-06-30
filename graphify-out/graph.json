@@ -135,6 +135,58 @@
       "norm_label": "run()"
     },
     {
+      "label": ".mcp.json",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "mcp_config_file"
+      },
+      "_origin": "ast",
+      "id": "mcp",
+      "community": 3,
+      "norm_label": ".mcp.json"
+    },
+    {
+      "label": "graphify",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "mcp_server"
+      },
+      "_origin": "ast",
+      "id": "mcp_mcp_server_graphify",
+      "community": 3,
+      "norm_label": "graphify"
+    },
+    {
+      "label": "uvx",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "mcp_command"
+      },
+      "_origin": "ast",
+      "id": "mcp_command_uvx",
+      "community": 3,
+      "norm_label": "uvx"
+    },
+    {
+      "label": "graphify-mcp",
+      "file_type": "code",
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "metadata": {
+        "mcp_kind": "mcp_package"
+      },
+      "_origin": "ast",
+      "id": "mcp_package_graphify_mcp",
+      "community": 3,
+      "norm_label": "graphify-mcp"
+    },
+    {
       "label": "lookup.rs",
       "file_type": "code",
       "source_file": "benches/lookup.rs",
@@ -251,7 +303,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_availability_availability",
-      "community": 45,
+      "community": 0,
       "norm_label": "availability"
     },
     {
@@ -261,7 +313,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_availability_rs_option",
-      "community": 45,
+      "community": 0,
       "norm_label": "option"
     },
     {
@@ -271,7 +323,7 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_availability_availability_is_available_at",
-      "community": 45,
+      "community": 0,
       "norm_label": ".is_available_at()"
     },
     {
@@ -281,7 +333,7 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "src_availability_availability_is_deprecated_at",
-      "community": 45,
+      "community": 0,
       "norm_label": ".is_deprecated_at()"
     },
     {
@@ -601,7 +653,7 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "src_classes_classes",
-      "community": 45,
+      "community": 0,
       "norm_label": "classes()"
     },
     {
@@ -611,7 +663,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_classes_rs_iterator",
-      "community": 45,
+      "community": 0,
       "norm_label": "iterator"
     },
     {
@@ -621,7 +673,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_classes_rs_item",
-      "community": 45,
+      "community": 0,
       "norm_label": "item"
     },
     {
@@ -631,7 +683,7 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "src_classes_classes_available_at",
-      "community": 45,
+      "community": 0,
       "norm_label": "classes_available_at()"
     },
     {
@@ -641,7 +693,7 @@
       "source_location": "L90",
       "_origin": "ast",
       "id": "src_classes_classes_added_in",
-      "community": 45,
+      "community": 0,
       "norm_label": "classes_added_in()"
     },
     {
@@ -651,7 +703,7 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "src_classes_classes_deprecated_as_of",
-      "community": 45,
+      "community": 0,
       "norm_label": "classes_deprecated_as_of()"
     },
     {
@@ -661,7 +713,7 @@
       "source_location": "L104",
       "_origin": "ast",
       "id": "src_classes_classes_removed_by",
-      "community": 45,
+      "community": 0,
       "norm_label": "classes_removed_by()"
     },
     {
@@ -671,7 +723,7 @@
       "source_location": "L116",
       "_origin": "ast",
       "id": "src_classes_methods",
-      "community": 45,
+      "community": 0,
       "norm_label": "methods()"
     },
     {
@@ -681,7 +733,7 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "src_classes_methods_available_at",
-      "community": 45,
+      "community": 0,
       "norm_label": "methods_available_at()"
     },
     {
@@ -691,7 +743,7 @@
       "source_location": "L139",
       "_origin": "ast",
       "id": "src_classes_methods_added_in",
-      "community": 45,
+      "community": 0,
       "norm_label": "methods_added_in()"
     },
     {
@@ -701,7 +753,7 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "src_classes_methods_deprecated_as_of",
-      "community": 45,
+      "community": 0,
       "norm_label": "methods_deprecated_as_of()"
     },
     {
@@ -711,7 +763,7 @@
       "source_location": "L153",
       "_origin": "ast",
       "id": "src_classes_methods_removed_by",
-      "community": 45,
+      "community": 0,
       "norm_label": "methods_removed_by()"
     },
     {
@@ -891,7 +943,7 @@
       "source_location": "L421",
       "_origin": "ast",
       "id": "src_classes_classes_and_methods_available_at_list_the_version_set",
-      "community": 45,
+      "community": 0,
       "norm_label": "classes_and_methods_available_at_list_the_version_set()"
     },
     {
@@ -991,7 +1043,7 @@
       "source_location": "L592",
       "_origin": "ast",
       "id": "src_classes_assert_table_invariants",
-      "community": 45,
+      "community": 0,
       "norm_label": "assert_table_invariants()"
     },
     {
@@ -1001,7 +1053,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "clone",
-      "community": 45,
+      "community": 0,
       "norm_label": "clone"
     },
     {
@@ -1021,7 +1073,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_compatibility",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibility.rs"
     },
     {
@@ -1031,7 +1083,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_compatibility_compatibilityissue",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibilityissue"
     },
     {
@@ -1041,7 +1093,7 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "src_compatibility_compatibilitywindow",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibilitywindow"
     },
     {
@@ -1051,7 +1103,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_compatibility_rs_option",
-      "community": 4,
+      "community": 6,
       "norm_label": "option"
     },
     {
@@ -1061,7 +1113,7 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "src_compatibility_compatibilitywindow_is_empty",
-      "community": 4,
+      "community": 6,
       "norm_label": ".is_empty()"
     },
     {
@@ -1071,7 +1123,7 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "src_compatibility_compatibilitywindow_contains",
-      "community": 4,
+      "community": 6,
       "norm_label": ".contains()"
     },
     {
@@ -1081,7 +1133,7 @@
       "source_location": "L85",
       "_origin": "ast",
       "id": "src_compatibility_compatibilityreport",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibilityreport"
     },
     {
@@ -1091,7 +1143,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_compatibility_rs_vec",
-      "community": 4,
+      "community": 6,
       "norm_label": "vec"
     },
     {
@@ -1201,7 +1253,7 @@
       "source_location": "L134",
       "_origin": "ast",
       "id": "src_compatibility_compatibility_issue_at",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibility_issue_at()"
     },
     {
@@ -1211,7 +1263,7 @@
       "source_location": "L179",
       "_origin": "ast",
       "id": "src_compatibility_compatibility_report_at",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibility_report_at()"
     },
     {
@@ -1221,7 +1273,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_compatibility_rs_i",
-      "community": 4,
+      "community": 6,
       "norm_label": "i"
     },
     {
@@ -1231,7 +1283,7 @@
       "source_location": "L200",
       "_origin": "ast",
       "id": "src_compatibility_compatibility_window",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibility_window()"
     },
     {
@@ -1511,7 +1563,7 @@
       "source_location": "L137",
       "_origin": "ast",
       "id": "src_extension_extensions",
-      "community": 45,
+      "community": 4,
       "norm_label": "extensions()"
     },
     {
@@ -1521,7 +1573,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_extension_rs_iterator",
-      "community": 45,
+      "community": 4,
       "norm_label": "iterator"
     },
     {
@@ -1531,7 +1583,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_extension_rs_item",
-      "community": 45,
+      "community": 4,
       "norm_label": "item"
     },
     {
@@ -1541,7 +1593,7 @@
       "source_location": "L144",
       "_origin": "ast",
       "id": "src_extension_functions_in_extension",
-      "community": 45,
+      "community": 4,
       "norm_label": "functions_in_extension()"
     },
     {
@@ -1551,7 +1603,7 @@
       "source_location": "L153",
       "_origin": "ast",
       "id": "src_extension_constants_in_extension",
-      "community": 45,
+      "community": 4,
       "norm_label": "constants_in_extension()"
     },
     {
@@ -1561,7 +1613,7 @@
       "source_location": "L162",
       "_origin": "ast",
       "id": "src_extension_classes_in_extension",
-      "community": 45,
+      "community": 4,
       "norm_label": "classes_in_extension()"
     },
     {
@@ -1571,7 +1623,7 @@
       "source_location": "L171",
       "_origin": "ast",
       "id": "src_extension_methods_in_extension",
-      "community": 45,
+      "community": 4,
       "norm_label": "methods_in_extension()"
     },
     {
@@ -1661,7 +1713,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_generated_classes",
-      "community": 39,
+      "community": 4,
       "norm_label": "classes.rs"
     },
     {
@@ -1921,7 +1973,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_query",
-      "community": 3,
+      "community": 45,
       "norm_label": "query.rs"
     },
     {
@@ -1931,7 +1983,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_query_function_availability",
-      "community": 3,
+      "community": 45,
       "norm_label": "function_availability()"
     },
     {
@@ -1941,7 +1993,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "src_query_rs_option",
-      "community": 3,
+      "community": 45,
       "norm_label": "option"
     },
     {
@@ -1951,7 +2003,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_query_resolve_function",
-      "community": 3,
+      "community": 45,
       "norm_label": "resolve_function()"
     },
     {
@@ -1961,7 +2013,7 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "src_query_is_function",
-      "community": 3,
+      "community": 45,
       "norm_label": "is_function()"
     },
     {
@@ -2041,7 +2093,7 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "src_query_is_function_available",
-      "community": 3,
+      "community": 45,
       "norm_label": "is_function_available()"
     },
     {
@@ -2051,7 +2103,7 @@
       "source_location": "L112",
       "_origin": "ast",
       "id": "src_query_is_function_deprecated_at",
-      "community": 3,
+      "community": 45,
       "norm_label": "is_function_deprecated_at()"
     },
     {
@@ -2071,7 +2123,7 @@
       "source_location": "L139",
       "_origin": "ast",
       "id": "src_query_spot_checks_lock_known_added_versions",
-      "community": 3,
+      "community": 45,
       "norm_label": "spot_checks_lock_known_added_versions()"
     },
     {
@@ -2081,7 +2133,7 @@
       "source_location": "L150",
       "_origin": "ast",
       "id": "src_query_names_are_normalised_before_lookup",
-      "community": 3,
+      "community": 45,
       "norm_label": "names_are_normalised_before_lookup()"
     },
     {
@@ -2091,7 +2143,7 @@
       "source_location": "L159",
       "_origin": "ast",
       "id": "src_query_availability_gates_on_added_version",
-      "community": 3,
+      "community": 45,
       "norm_label": "availability_gates_on_added_version()"
     },
     {
@@ -2101,7 +2153,7 @@
       "source_location": "L177",
       "_origin": "ast",
       "id": "src_query_table_is_sorted_unique_with_covered_versions_and_extensions",
-      "community": 3,
+      "community": 45,
       "norm_label": "table_is_sorted_unique_with_covered_versions_and_extensions()"
     },
     {
@@ -2111,7 +2163,7 @@
       "source_location": "L249",
       "_origin": "ast",
       "id": "src_query_spot_checks_lock_known_deprecation_and_removal",
-      "community": 3,
+      "community": 45,
       "norm_label": "spot_checks_lock_known_deprecation_and_removal()"
     },
     {
@@ -2121,7 +2173,7 @@
       "source_location": "L269",
       "_origin": "ast",
       "id": "src_query_availability_excludes_removed_functions",
-      "community": 3,
+      "community": 45,
       "norm_label": "availability_excludes_removed_functions()"
     },
     {
@@ -2131,7 +2183,7 @@
       "source_location": "L287",
       "_origin": "ast",
       "id": "src_query_deprecation_gates_on_deprecated_version",
-      "community": 3,
+      "community": 45,
       "norm_label": "deprecation_gates_on_deprecated_version()"
     },
     {
@@ -2141,7 +2193,7 @@
       "source_location": "L308",
       "_origin": "ast",
       "id": "src_query_namespaced_function_resolves_normalised",
-      "community": 3,
+      "community": 45,
       "norm_label": "namespaced_function_resolves_normalised()"
     },
     {
@@ -2461,7 +2513,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_compatibility",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibility.rs"
     },
     {
@@ -2471,7 +2523,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "tests_compatibility_cloned_through_trait",
-      "community": 4,
+      "community": 6,
       "norm_label": "cloned_through_trait()"
     },
     {
@@ -2481,7 +2533,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "tests_compatibility_rs_t",
-      "community": 4,
+      "community": 6,
       "norm_label": "t"
     },
     {
@@ -2491,7 +2543,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "tests_compatibility_compatibility_issue_reports_every_variant_and_none_for_clean_symbols",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibility_issue_reports_every_variant_and_none_for_clean_symbols()"
     },
     {
@@ -2501,7 +2553,7 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "tests_compatibility_compatibility_issue_prioritises_removed_over_deprecated",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibility_issue_prioritises_removed_over_deprecated()"
     },
     {
@@ -2511,7 +2563,7 @@
       "source_location": "L148",
       "_origin": "ast",
       "id": "tests_compatibility_compatibility_window_tracks_minimum_upper_bound_and_empty_state",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibility_window_tracks_minimum_upper_bound_and_empty_state()"
     },
     {
@@ -2521,7 +2573,7 @@
       "source_location": "L235",
       "_origin": "ast",
       "id": "tests_compatibility_compatibility_report_collects_issues_in_input_order_without_deduplication",
-      "community": 4,
+      "community": 6,
       "norm_label": "compatibility_report_collects_issues_in_input_order_without_deduplication()"
     },
     {
@@ -2631,7 +2683,7 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "tests_phase1_reverse_iterators_report_added_deprecated_and_removed_symbols",
-      "community": 45,
+      "community": 0,
       "norm_label": "reverse_iterators_report_added_deprecated_and_removed_symbols()"
     },
     {
@@ -2671,7 +2723,7 @@
       "source_location": "L416",
       "_origin": "ast",
       "id": "tests_phase1_extension_inventory_lists_extensions_and_filters_symbols",
-      "community": 45,
+      "community": 0,
       "norm_label": "extension_inventory_lists_extensions_and_filters_symbols()"
     },
     {
@@ -2861,7 +2913,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_public_api",
-      "community": 3,
+      "community": 0,
       "norm_label": "public_api.rs"
     },
     {
@@ -2871,7 +2923,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "tests_public_api_cloned_through_trait",
-      "community": 3,
+      "community": 0,
       "norm_label": "cloned_through_trait()"
     },
     {
@@ -2881,7 +2933,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "tests_public_api_rs_t",
-      "community": 3,
+      "community": 0,
       "norm_label": "t"
     },
     {
@@ -2891,7 +2943,7 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "tests_public_api_parse_error",
-      "community": 3,
+      "community": 0,
       "norm_label": "parse_error()"
     },
     {
@@ -2901,7 +2953,7 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "tests_public_api_php_version_construction_parsing_and_error_traits_are_public",
-      "community": 3,
+      "community": 0,
       "norm_label": "php_version_construction_parsing_and_error_traits_are_public()"
     },
     {
@@ -2911,7 +2963,7 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "tests_public_api_symbol_kind_traits_and_availability_fields_are_observable",
-      "community": 3,
+      "community": 0,
       "norm_label": "symbol_kind_traits_and_availability_fields_are_observable()"
     },
     {
@@ -2921,7 +2973,7 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "tests_public_api_function_public_api_handles_known_unknown_and_edge_names",
-      "community": 3,
+      "community": 0,
       "norm_label": "function_public_api_handles_known_unknown_and_edge_names()"
     },
     {
@@ -2951,7 +3003,7 @@
       "source_location": "L289",
       "_origin": "ast",
       "id": "tests_public_api_class_public_api_handles_case_leading_backslash_and_boundaries",
-      "community": 45,
+      "community": 0,
       "norm_label": "class_public_api_handles_case_leading_backslash_and_boundaries()"
     },
     {
@@ -2961,7 +3013,7 @@
       "source_location": "L359",
       "_origin": "ast",
       "id": "tests_public_api_method_public_api_handles_declared_only_lookup_and_boundaries",
-      "community": 45,
+      "community": 0,
       "norm_label": "method_public_api_handles_declared_only_lookup_and_boundaries()"
     },
     {
@@ -2981,7 +3033,7 @@
       "source_location": "L524",
       "_origin": "ast",
       "id": "tests_public_api_callable_method_public_api_handles_missing_names_and_diamond_deduplication",
-      "community": 3,
+      "community": 0,
       "norm_label": "callable_method_public_api_handles_missing_names_and_diamond_deduplication()"
     },
     {
@@ -2991,7 +3043,7 @@
       "source_location": "L550",
       "_origin": "ast",
       "id": "tests_public_api_callable_method_public_api_uses_effective_availability_bounds",
-      "community": 3,
+      "community": 0,
       "norm_label": "callable_method_public_api_uses_effective_availability_bounds()"
     },
     {
@@ -3001,7 +3053,7 @@
       "source_location": "L594",
       "_origin": "ast",
       "id": "tests_public_api_callable_method_public_api_uses_method_deprecation_metadata",
-      "community": 3,
+      "community": 0,
       "norm_label": "callable_method_public_api_uses_method_deprecation_metadata()"
     },
     {
@@ -3011,7 +3063,7 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "tests_public_api_core_extension_lookup_is_case_sensitive",
-      "community": 3,
+      "community": 0,
       "norm_label": "core_extension_lookup_is_case_sensitive()"
     },
     {
@@ -4721,7 +4773,7 @@
       "source_location": "",
       "_origin": "ast",
       "id": "hashset",
-      "community": 3,
+      "community": 0,
       "norm_label": "hashset"
     },
     {
@@ -5018,7 +5070,7 @@
       "label": "How a consumer uses it",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L115",
+      "source_location": "L117",
       "_origin": "ast",
       "id": "readme_how_a_consumer_uses_it",
       "community": 16,
@@ -5028,7 +5080,7 @@
       "label": "The query layer",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L192",
+      "source_location": "L194",
       "_origin": "ast",
       "id": "readme_the_query_layer",
       "community": 16,
@@ -5038,7 +5090,7 @@
       "label": "Cargo features",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L240",
+      "source_location": "L242",
       "_origin": "ast",
       "id": "readme_cargo_features",
       "community": 16,
@@ -5048,7 +5100,7 @@
       "label": "Data provenance and licences",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L245",
+      "source_location": "L247",
       "_origin": "ast",
       "id": "readme_data_provenance_and_licences",
       "community": 16,
@@ -5058,7 +5110,7 @@
       "label": "Non-goals",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L273",
+      "source_location": "L275",
       "_origin": "ast",
       "id": "readme_non_goals",
       "community": 16,
@@ -5068,7 +5120,7 @@
       "label": "License",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L279",
+      "source_location": "L281",
       "_origin": "ast",
       "id": "readme_license",
       "community": 16,
@@ -5078,7 +5130,7 @@
       "label": "Contribution",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L290",
+      "source_location": "L292",
       "_origin": "ast",
       "id": "readme_contribution",
       "community": 16,
@@ -6373,6 +6425,38 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "mcp",
+      "target": "mcp_mcp_server_graphify"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "context": "command",
+      "source": "mcp_mcp_server_graphify",
+      "target": "mcp_command_uvx"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".mcp.json",
+      "source_location": "L1",
+      "weight": 1.0,
+      "context": "package",
+      "source": "mcp_mcp_server_graphify",
+      "target": "mcp_package_graphify_mcp"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "benches/lookup.rs",
       "source_location": "L13",
       "weight": 1.0,
@@ -7085,7 +7169,7 @@
       "weight": 1.0,
       "context": "import",
       "source": "src_changes",
-      "target": "src_classes",
+      "target": "src_generated_classes",
       "confidence_score": 1.0
     },
     {
@@ -8375,7 +8459,7 @@
       "weight": 1.0,
       "context": "import",
       "source": "src_classes",
-      "target": "src_classes",
+      "target": "src_generated_classes",
       "confidence_score": 1.0
     },
     {
@@ -8839,39 +8923,6 @@
       "weight": 1.0,
       "source": "src_classes",
       "target": "src_classes_spot_checks_lock_known_class_versions",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "src/extension.rs",
-      "source_location": "L9",
-      "weight": 1.0,
-      "context": "import",
-      "source": "src_extension",
-      "target": "src_classes",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "src/lib.rs",
-      "source_location": "L65",
-      "weight": 1.0,
-      "context": "import",
-      "source": "src_lib",
-      "target": "src_classes",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "confidence": "EXTRACTED",
-      "source_file": "src/symbols.rs",
-      "source_location": "L3",
-      "weight": 1.0,
-      "context": "import",
-      "source": "src_symbols",
-      "target": "src_classes",
       "confidence_score": 1.0
     },
     {
@@ -11419,6 +11470,17 @@
       "relation": "imports_from",
       "confidence": "EXTRACTED",
       "source_file": "src/extension.rs",
+      "source_location": "L9",
+      "weight": 1.0,
+      "context": "import",
+      "source": "src_extension",
+      "target": "src_generated_classes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src/extension.rs",
       "source_location": "L11",
       "weight": 1.0,
       "context": "import",
@@ -11900,6 +11962,28 @@
     {
       "relation": "imports_from",
       "confidence": "EXTRACTED",
+      "source_file": "src/lib.rs",
+      "source_location": "L65",
+      "weight": 1.0,
+      "context": "import",
+      "source": "src_lib",
+      "target": "src_generated_classes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
+      "source_file": "src/symbols.rs",
+      "source_location": "L3",
+      "weight": 1.0,
+      "context": "import",
+      "source": "src_symbols",
+      "target": "src_generated_classes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports_from",
+      "confidence": "EXTRACTED",
       "source_file": "src/query.rs",
       "source_location": "L8",
       "weight": 1.0,
@@ -11916,7 +12000,7 @@
       "weight": 1.0,
       "context": "import",
       "source": "src_lib",
-      "target": "tests_provenance",
+      "target": "src_provenance",
       "confidence_score": 1.0
     },
     {
@@ -19568,7 +19652,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L245",
+      "source_location": "L247",
       "weight": 1.0,
       "source": "readme_php_native_symbols",
       "target": "readme_data_provenance_and_licences",
@@ -19578,7 +19662,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L115",
+      "source_location": "L117",
       "weight": 1.0,
       "source": "readme_php_native_symbols",
       "target": "readme_how_a_consumer_uses_it",
@@ -19588,7 +19672,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L279",
+      "source_location": "L281",
       "weight": 1.0,
       "source": "readme_php_native_symbols",
       "target": "readme_license",
@@ -19608,7 +19692,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L273",
+      "source_location": "L275",
       "weight": 1.0,
       "source": "readme_php_native_symbols",
       "target": "readme_non_goals",
@@ -19638,7 +19722,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L192",
+      "source_location": "L194",
       "weight": 1.0,
       "source": "readme_php_native_symbols",
       "target": "readme_the_query_layer",
@@ -19658,7 +19742,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L240",
+      "source_location": "L242",
       "weight": 1.0,
       "source": "readme_the_query_layer",
       "target": "readme_cargo_features",
@@ -19668,7 +19752,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L290",
+      "source_location": "L292",
       "weight": 1.0,
       "source": "readme_license",
       "target": "readme_contribution",
@@ -20571,5 +20655,5 @@
       "source_file": "tools/regenerate/README.md"
     }
   ],
-  "built_at_commit": "27ccbd6505a6a4f7d6cbb509a08b1435d141a432"
+  "built_at_commit": "7944ef5053f0962cec0d06abe3f99db2fe7f855e"
 }

@@ -1,16 +1,16 @@
-# Graph Report - php-native-symbols  (2026-06-29)
+# Graph Report - php-native-symbols  (2026-06-30)
 
 ## Corpus Check
-- 49 files · ~170,737 words
+- 50 files · ~170,977 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 612 nodes · 1334 edges · 47 communities (23 shown, 24 thin omitted)
+- 616 nodes · 1337 edges · 46 communities (22 shown, 24 thin omitted)
 - Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 139 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `27ccbd65`
+- Built from commit: `7944ef50`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -71,19 +71,18 @@
 10. `callable_method_availability()` - 15 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `callable_method_public_api_uses_effective_availability_bounds()` --calls--> `callable_method_availability()`  [INFERRED]
-  tests/public_api.rs → src/classes.rs
-- `callable_method_public_api_uses_method_deprecation_metadata()` --calls--> `callable_method_availability()`  [INFERRED]
-  tests/public_api.rs → src/classes.rs
+- `method_table_is_sorted_and_unique_by_class_then_method()` --calls--> `methods()`  [INFERRED]
+  tests/invariants.rs → src/classes.rs
 - `readme_compatibility_report_examples_compile()` --calls--> `compatibility_report_at()`  [INFERRED]
   tests/readme_examples.rs → src/compatibility.rs
+- `function_public_api_handles_known_unknown_and_edge_names()` --calls--> `function_availability()`  [INFERRED]
+  tests/public_api.rs → src/query.rs
 - `main()` --calls--> `compatibility_report_at()`  [INFERRED]
   benches/lookup.rs → src/compatibility.rs
 - `main()` --calls--> `constant_availability()`  [INFERRED]
   benches/lookup.rs → src/constants.rs
 
 ## Import Cycles
-- 1-file cycle: `src/classes.rs -> src/classes.rs`
 - 1-file cycle: `src/constants.rs -> src/constants.rs`
 - 1-file cycle: `tests/serde.rs -> tests/serde.rs`
 - 2-file cycle: `tools/regenerate/src/lifecycle.rs -> tools/regenerate/src/render.rs -> tools/regenerate/src/lifecycle.rs`
@@ -93,11 +92,11 @@
 - **Trust And Provenance Surface** - readme_inventory_and_trust, docs_expansion_spec_source_manifest, docs_expansion_spec_extension_inventory, docs_expansion_spec_provenance, tools_regenerate_readme_pinned_sources [INFERRED 0.85]
 - **Quality And Regeneration Controls** - tools_regenerate_readme_offline_generator, tools_regenerate_readme_drift_gates, github_workflows_ci_quality_gates, claude_architecture_guidance [INFERRED 0.85]
 
-## Communities (47 total, 24 thin omitted)
+## Communities (46 total, 24 thin omitted)
 
 ### Community 0 - "Class Method Availability"
-Cohesion: 0.08
-Nodes (44): bench(), main(), report(), T, Duration, Fn, FnMut, Ordering (+36 more)
+Cohesion: 0.05
+Nodes (74): bench(), main(), report(), T, Clone, Duration, Fn, FnMut (+66 more)
 
 ### Community 1 - "Serde Serialisation Tests"
 Cohesion: 0.09
@@ -108,20 +107,20 @@ Cohesion: 0.05
 Nodes (68): HashMap, PathBuf, generate(), GenerationDiagnostics, Record, Box, BTreeSet, Error (+60 more)
 
 ### Community 3 - "Function Query Lookups"
-Cohesion: 0.11
-Nodes (19): HashSet, function_availability(), is_function(), is_function_available(), is_function_deprecated_at(), names_are_normalised_before_lookup(), namespaced_function_resolves_normalised(), resolve_function() (+11 more)
+Cohesion: 0.50
+Nodes (3): uvx, graphify, graphify-mcp
 
 ### Community 4 - "Crate Architecture Extensions"
-Cohesion: 0.08
-Nodes (26): SymbolKind, compatibility_issue_at(), compatibility_report_at(), compatibility_window(), CompatibilityIssue, CompatibilityReport, CompatibilityWindow, I (+18 more)
+Cohesion: 0.11
+Nodes (19): SymbolKind, classes_in_extension(), constants_in_extension(), extension_requirement(), extension_requirements(), ExtensionRequirement, extensions(), functions_in_extension() (+11 more)
 
 ### Community 5 - "Change Set APIs"
 Cohesion: 0.19
 Nodes (35): change_in_range(), change_kinds(), class_changes_between(), class_changes_iter(), ClassChange, constant_changes_between(), constant_changes_iter(), ConstantChange (+27 more)
 
 ### Community 6 - "Compatibility Reporting"
-Cohesion: 0.29
-Nodes (8): S, Serialize, CompatibilityReport<'a>, IssueSlice, IssueSlice<'a, '_>, Error, Ok, Result
+Cohesion: 0.11
+Nodes (22): S, Serialize, compatibility_issue_at(), compatibility_report_at(), compatibility_window(), CompatibilityIssue, CompatibilityReport, CompatibilityReport<'a> (+14 more)
 
 ### Community 7 - "Provenance And Sources"
 Cohesion: 0.12
@@ -164,27 +163,27 @@ Cohesion: 0.16
 Nodes (27): BTreeMap, build_hierarchy(), generate_hierarchy(), generate_methods(), insert_hierarchy_ancestor(), merge_added(), merge_removed(), merge_removed_cap() (+19 more)
 
 ### Community 45 - "Community 45"
-Cohesion: 0.11
-Nodes (43): Clone, Availability, Option, assert_table_invariants(), classes(), classes_added_in(), classes_and_methods_available_at_list_the_version_set(), classes_available_at() (+35 more)
+Cohesion: 0.12
+Nodes (25): is_core_extension(), function_availability(), functions(), functions_added_in(), functions_available_at(), functions_available_at_lists_the_version_set(), functions_deprecated_as_of(), functions_removed_by() (+17 more)
 
 ## Knowledge Gaps
-- **104 isolated node(s):** `Input`, `SymbolKind`, `graphify`, `Status`, `Commands` (+99 more)
+- **106 isolated node(s):** `uvx`, `graphify-mcp`, `Input`, `SymbolKind`, `graphify` (+101 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **24 thin communities (<3 nodes) omitted from report** - run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `PhpVersion` connect `Change Set APIs` to `Class Method Availability`, `Function Query Lookups`, `Crate Architecture Extensions`, `Provenance And Sources`, `Constant Lookup Rules`, `PhpVersion Parsing`, `Community 45`?**
-  _High betweenness centrality (0.114) - this node is a cross-community bridge._
-- **Why does `Availability` connect `Community 45` to `Class Method Availability`, `Function Query Lookups`, `Crate Architecture Extensions`, `Change Set APIs`, `Constant Lookup Rules`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+- **Why does `PhpVersion` connect `Change Set APIs` to `Class Method Availability`, `Crate Architecture Extensions`, `Compatibility Reporting`, `Provenance And Sources`, `Constant Lookup Rules`, `PhpVersion Parsing`, `Community 45`?**
+  _High betweenness centrality (0.125) - this node is a cross-community bridge._
+- **Why does `Availability` connect `Class Method Availability` to `Constant Lookup Rules`, `Community 45`, `Crate Architecture Extensions`, `Change Set APIs`?**
+  _High betweenness centrality (0.045) - this node is a cross-community bridge._
 - **Why does `generate()` connect `Regeneration Pipeline` to `Community 44`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
-- **What connects `Input`, `SymbolKind`, `graphify` to the rest of the system?**
-  _106 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _High betweenness centrality (0.041) - this node is a cross-community bridge._
+- **What connects `uvx`, `graphify-mcp`, `Input` to the rest of the system?**
+  _108 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Class Method Availability` be split into smaller, more focused modules?**
-  _Cohesion score 0.07767722473604827 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05346164127238706 - nodes in this community are weakly interconnected._
 - **Should `Serde Serialisation Tests` be split into smaller, more focused modules?**
   _Cohesion score 0.09262510974539069 - nodes in this community are weakly interconnected._
 - **Should `Regeneration Pipeline` be split into smaller, more focused modules?**

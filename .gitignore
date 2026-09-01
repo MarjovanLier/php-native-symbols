@@ -7,3 +7,6 @@
 
 # Library crate: lock file is not committed (resolved by the consumer)
 /Cargo.lock
+
+# Machine-specific: .graphify_python holds an absolute interpreter path
+graphify-out/

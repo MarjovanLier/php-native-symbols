@@ -36,7 +36,7 @@ impl Availability {
     /// Whether the symbol is present at `version`: introduced at or before it
     /// (`added: None` counts as present) and not yet removed. A deprecated but
     /// still-present symbol counts as available. Intended for versions in the
-    /// supported range (7.4 to 8.5).
+    /// supported range (7.4 to 8.6).
     #[must_use]
     pub(crate) fn is_available_at(&self, version: PhpVersion) -> bool {
         self.window().contains(version)

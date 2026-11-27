@@ -251,7 +251,7 @@ pub(crate) fn generate(
             gaps += 1;
         }
 
-        // removed: a symbol absent at 8.5 disappears at the range version just
+        // removed: a symbol absent at 8.6 disappears at the range version just
         // after its last appearance (the candidate). It ships removed only if a
         // reviewed override pins it or PHPCompatibility confirms that candidate;
         // a candidate PHPCompatibility is silent on is a still-core build
@@ -288,7 +288,7 @@ pub(crate) fn generate(
         if spec.corroborate_stub_removed {
             if let Some(stub_rm) = info.and_then(|i| i.removed.as_deref()) {
                 if let Some(mm) = parse_version_lenient(stub_rm.trim()) {
-                    if ((7, 4)..=(8, 5)).contains(&mm) && removed != Some(mm) {
+                    if ((7, 4)..=(8, 6)).contains(&mm) && removed != Some(mm) {
                         stub_removed_mismatch
                             .push(format!("{name}: ours={removed:?} stub @removed={mm:?}"));
                     }
@@ -373,7 +373,22 @@ pub(crate) fn generate(
     // a version; an unresolved disagreement fails generation (the file is not
     // written) so no minimum-version ships as a guess. Resolve each in the kind's
     // added overrides against the PHP manual, then regenerate.
-    let disagreements = cross_check_added(&php_added, &records);
+    let exempt = spec.added_phpcompat_exemptions;
+    for name in exempt {
+        let Some(version) = php_added.get(*name) else {
+            return Err(format!("{}: stale added exemption {name}", spec.label).into());
+        };
+        let single: VersionMap = HashMap::from([((*name).to_string(), *version)]);
+        if cross_check_added(&single, &records).is_empty() {
+            return Err(format!("{}: stale added exemption {name}", spec.label).into());
+        }
+    }
+    let checked: VersionMap = php_added
+        .iter()
+        .filter(|(name, _)| !exempt.contains(&name.as_str()))
+        .map(|(name, version)| (name.clone(), *version))
+        .collect();
+    let disagreements = cross_check_added(&checked, &records);
     if !disagreements.is_empty() {
         for d in &disagreements {
             eprintln!("  {d}");
@@ -407,7 +422,7 @@ pub(crate) fn generate(
     let our: HashMap<&str, &Record> = records.iter().map(|r| (r.name.as_str(), r)).collect();
 
     // removed_phpcompat_mismatch (reverse gate) + membership. Every in-table
-    // symbol PHPCompatibility records removed in (7.4, 8.5] must carry that exact
+    // symbol PHPCompatibility records removed in (7.4, 8.6] must carry that exact
     // version. For a removal at or before the floor: a symbol we ship as pre-floor
     // present (`added: None`) is a membership violation; a symbol we ship as
     // re-introduced in range (`added: Some`) must have that introduction

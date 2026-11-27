@@ -45,6 +45,7 @@ const ALWAYS_BUNDLED: &[&str] = &[
 /// Every extension string present in the generated tables, sorted and unique.
 const EXTENSIONS: &[&str] = &[
     "Core",
+    "FFI",
     "PDO",
     "Phar",
     "Reflection",
@@ -59,6 +60,7 @@ const EXTENSIONS: &[&str] = &[
     "date",
     "dba",
     "dom",
+    "enchant",
     "exif",
     "fileinfo",
     "filter",
@@ -70,6 +72,7 @@ const EXTENSIONS: &[&str] = &[
     "iconv",
     "imap",
     "intl",
+    "io",
     "json",
     "ldap",
     "libsodium",

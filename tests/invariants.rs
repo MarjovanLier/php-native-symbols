@@ -13,7 +13,7 @@ use php_native_symbols::{
 use proptest::prelude::*;
 
 /// The covered major.minor versions; every `added`/`removed` must be one of them.
-const COVERED: [PhpVersion; 7] = [
+const COVERED: [PhpVersion; 8] = [
     PhpVersion::minor(7, 4),
     PhpVersion::minor(8, 0),
     PhpVersion::minor(8, 1),
@@ -21,6 +21,7 @@ const COVERED: [PhpVersion; 7] = [
     PhpVersion::minor(8, 3),
     PhpVersion::minor(8, 4),
     PhpVersion::minor(8, 5),
+    PhpVersion::minor(8, 6),
 ];
 
 /// Assert the per-row invariants shared by every table.
@@ -41,6 +42,9 @@ fn check_row(label: &str, a: &Availability) {
             COVERED.contains(&removed),
             "{label}: removed {removed:?} not covered"
         );
+        // A symbol removed at the floor is absent from the whole range and is
+        // excluded from the tables.
+        assert!(removed > COVERED[0], "{label}: removed at the floor");
     }
     // Lifecycle ordering wherever each pair is present.
     if let (Some(added), Some(deprecated)) = (a.added, a.deprecated) {

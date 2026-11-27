@@ -20,7 +20,7 @@ pub(crate) fn cross_check_added(php_added: &VersionMap, records: &[Record]) -> V
         let Some(our_added) = ours.get(name.as_str()) else {
             continue; // not in our table (e.g. an extension absent from the build)
         };
-        let in_range = *php_ver >= (7, 4) && *php_ver <= (8, 5);
+        let in_range = *php_ver >= (7, 4) && *php_ver <= (8, 6);
         let expected = if in_range { Some(*php_ver) } else { None };
         if *our_added != expected {
             out.push(format!(
@@ -96,7 +96,9 @@ fn parse_versions(
     for line in text.lines() {
         let trimmed = line.trim();
         if let Some(name) = entry_name(trimmed) {
-            current = Some(policy.fold(name));
+            // A PHP single-quoted string reads `\\` as one backslash; upstream
+            // writes namespaced keys either way (`'IMAP\\Connection'`).
+            current = Some(policy.fold(&name.replace("\\\\", "\\")));
         } else if let Some(name) = &current {
             if let Some(ver) = pick(trimmed) {
                 map.entry(name.clone()).or_insert(ver);
@@ -198,6 +200,21 @@ mod tests {
         let false_versions = parse_false_versions(text, NamePolicy::CaseInsensitive);
         assert_eq!(false_versions.get("strlen"), Some(&(7, 4)));
         assert_eq!(false_versions.get("filter_validate_bool"), None);
+    }
+
+    #[test]
+    fn phpcompat_namespaced_keys_parse_the_same_escaped_or_not() {
+        let text = r"
+            'IMAP\\Connection' => [
+                '8.4' => true,
+            ],
+            'PSpell\Config' => [
+                '8.4' => true,
+            ],
+        ";
+        let map = parse_true_versions(text, NamePolicy::CaseInsensitive);
+        assert_eq!(map.get(r"imap\connection"), Some(&(8, 4)));
+        assert_eq!(map.get(r"pspell\config"), Some(&(8, 4)));
     }
 
     #[test]

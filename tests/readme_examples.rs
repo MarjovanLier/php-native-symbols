@@ -76,7 +76,7 @@ fn readme_compatibility_report_examples_compile() {
 fn readme_metadata_examples_compile() {
     let manifest = source_manifest();
     assert_eq!(manifest.coverage.first, PHP_74);
-    assert_eq!(manifest.coverage.last, PhpVersion::minor(8, 5));
+    assert_eq!(manifest.coverage.last, PhpVersion::minor(8, 6));
     assert!(manifest
         .sources
         .iter()

@@ -42,7 +42,7 @@ From that, the questions a version-aware rule asks become trivial:
 - is it available at PHP 8.1? -> `added <= 8.1 && removed.map_or(true, |r| 8.1 < r)`
 - is it deprecated at PHP 8.2? -> `deprecated.map_or(false, |d| d <= 8.2)`
 
-The crate covers PHP 7.4 through 8.5. `added: None` means the symbol predates
+The crate covers PHP 7.4 through 8.6. `added: None` means the symbol predates
 this range (added at or before 7.4), so treat it as always available within the
 supported range. `deprecated` is kept as the real version even when it predates
 7.4 (e.g. `create_function` at 7.2), since "deprecated since" is a useful fact.

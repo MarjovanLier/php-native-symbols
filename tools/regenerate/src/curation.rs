@@ -6,7 +6,7 @@
 /// builds, so the diff misplaces their ancient functions in-range. Reviewed: if
 /// added-artefact correction ever fires for an extension not listed here,
 /// generation fails so the new case gets a human look before the data changes.
-pub(crate) const FUNCTION_ADDED_ARTIFACT_EXTENSIONS: &[&str] = &["odbc", "tidy", "zip"];
+pub(crate) const FUNCTION_ADDED_ARTIFACT_EXTENSIONS: &[&str] = &["enchant", "odbc", "tidy", "zip"];
 
 /// Reviewed per-symbol `added` overrides, each resolved against the PHP manual
 /// (a fact, corroborated by PHPCompatibility) for functions the diff would
@@ -26,6 +26,20 @@ pub(crate) const FUNCTION_ADDED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[
     // built at the floor but only exposes these from 8.0, so the diff says 8.0.
     ("intltz_get_windows_id", None),
     ("intltz_get_id_for_windows_id", None),
+    // Procedural zip API: added 5.2 (PHP manual, PHPCompatibility), so it
+    // predates the floor. The 7.3 baseline build lacks zip while the 7.4 build
+    // has it, so the diff says 7.4 and the floor-extension guard blocks the
+    // artefact correction.
+    ("zip_close", None),
+    ("zip_entry_close", None),
+    ("zip_entry_compressedsize", None),
+    ("zip_entry_compressionmethod", None),
+    ("zip_entry_filesize", None),
+    ("zip_entry_name", None),
+    ("zip_entry_open", None),
+    ("zip_entry_read", None),
+    ("zip_open", None),
+    ("zip_read", None),
 ];
 
 /// Extensions whose functions disappear from the late reflection builds only
@@ -43,12 +57,16 @@ pub(crate) const FUNCTION_REMOVED_ARTIFACT_EXTENSIONS: &[&str] =
     &["exif", "ftp", "gettext", "odbc", "tidy", "zip"];
 
 /// Reviewed per-symbol `removed` overrides. `Some(v)` pins a removal version,
-/// `None` forces "not removed". Empty: every current removal is confirmed by
-/// PHPCompatibility's `true`-version and every silent disappearance is a reviewed
-/// build artefact, so none is needed. The slot exists so a future genuine
-/// removal PHPCompatibility has not yet recorded has a reviewed home (it must
-/// still agree with PHPCompatibility where the latter has an opinion).
-pub(crate) const FUNCTION_REMOVED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[];
+/// `None` forces "not removed". The slot also gives a future genuine removal
+/// PHPCompatibility has not yet recorded a reviewed home (it must still agree
+/// with PHPCompatibility where the latter has an opinion).
+pub(crate) const FUNCTION_REMOVED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[
+    // php-src PHP-8.6 still declares chroot under the same
+    // HAVE_CHROOT && !ZTS && ENABLE_CHROOT_FUNC guard as 8.5; only the 8.6
+    // reflection build omits it. `standard` is not allowlisted as a
+    // removed-artefact extension, because that would mask genuine removals.
+    ("chroot", None),
+];
 
 /// Reviewed per-symbol `deprecated` overrides, each a PHP-manual fact that must
 /// equal PHPCompatibility's `false`-version. They fill two gaps the cache cannot
@@ -109,9 +127,13 @@ pub(crate) const FUNCTION_REPLACEMENTS: &[(&str, &str)] = &[
     ("create_function", "an anonymous function"),
     ("date_sunrise", "date_sun_info()"),
     ("date_sunset", "date_sun_info()"),
+    ("doubleval", "floatval()"),
     ("each", "a foreach loop"),
     ("gmstrftime", "IntlDateFormatter::format()"),
     ("image2wbmp", "imagewbmp()"),
+    ("is_double", "is_float()"),
+    ("is_integer", "is_int()"),
+    ("is_long", "is_int()"),
     ("is_real", "is_float()"),
     ("mbereg", "mb_ereg()"),
     ("mbereg_match", "mb_ereg_match()"),
@@ -133,6 +155,9 @@ pub(crate) const FUNCTION_REPLACEMENTS: &[(&str, &str)] = &[
     ("read_exif_data", "exif_read_data()"),
     ("restore_include_path", "ini_restore('include_path')"),
     ("socket_set_timeout", "stream_set_timeout()"),
+    ("spl_classes", "ReflectionExtension::getClassNames()"),
+    ("spl_object_hash", "spl_object_id()"),
+    ("strcoll", "Collator::compare()"),
     ("strftime", "IntlDateFormatter::format()"),
     ("utf8_decode", "mb_convert_encoding()"),
     ("utf8_encode", "mb_convert_encoding()"),
@@ -236,7 +261,8 @@ pub(crate) const COMPILER_OPTIMIZED: &[&str] = &[
 /// constant `PDO_ODBC_TYPE`, which the diff corrects to `None` and a reviewed
 /// override then pins to its real 8.3. Reviewed allowlist: a correction for an
 /// extension not listed here fails generation.
-pub(crate) const CONSTANT_ADDED_ARTIFACT_EXTENSIONS: &[&str] = &["PDO", "odbc", "tidy", "xsl"];
+pub(crate) const CONSTANT_ADDED_ARTIFACT_EXTENSIONS: &[&str] =
+    &["PDO", "enchant", "odbc", "tidy", "xsl"];
 
 /// Reviewed per-symbol constant `added` overrides (PHP-manual facts, each
 /// corroborated by PHPCompatibility's NewConstantsSniff). The 28 `TIDY_TAG_*`
@@ -275,6 +301,23 @@ pub(crate) const CONSTANT_ADDED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[
     ("TIDY_TAG_VIDEO", Some((7, 4))),
     ("PDO_ODBC_TYPE", Some((8, 3))),
     ("PGSQL_TRACE_SUPPRESS_TIMESTAMPS", Some((8, 3))),
+    // enchant is absent at the 7.4 floor build, so the artefact rule nulls this
+    // genuine 8.0 addition (php-src PHP-8.0 enchant.c registers it, PHP-7.4
+    // does not; PHPCompatibility agrees).
+    ("LIBENCHANT_VERSION", Some((8, 0))),
+];
+
+/// Reviewed constants whose PHPCompatibility `added` version comes from a
+/// source line that no real PHP build compiled, so the cache-derived value is
+/// shipped instead. This is the one place where the cache overrules
+/// PHPCompatibility. Each entry must still disagree with PHPCompatibility, or
+/// generation fails (stale curation).
+pub(crate) const CONSTANT_ADDED_PHPCOMPAT_EXEMPTIONS: &[&str] = &[
+    // php-src before 8.6 registered it under `#ifdef CONNECTION_SSL_STARTUP`,
+    // but libpq declares that name as a ConnStatusType enum member, not a
+    // macro, so the guard never fired. PHP-8.6 dropped the guard. Every
+    // reflection cache before 8.6 lacks it; PHPCompatibility says 5.6.
+    "PGSQL_CONNECTION_SSL_STARTUP",
 ];
 
 /// Reviewed per-symbol constant `removed` overrides. `OPENSSL_SSLV23_PADDING`
@@ -308,6 +351,10 @@ pub(crate) const CONSTANT_REMOVED_ARTIFACT_EXTENSIONS: &[&str] =
 pub(crate) const CONSTANT_DEPRECATIONS: &[(&str, (u8, u8))] = &[
     // E_STRICT: deprecated 8.4 (RFC: Deprecate E_STRICT, PHP 8.4). Not removed.
     ("E_STRICT", (8, 4)),
+    // enchant dictionary-path constants: deprecated 8.0 with
+    // enchant_broker_{get,set}_dict_path() (php-src PHP-8.0 CONST_DEPRECATED).
+    ("ENCHANT_ISPELL", (8, 0)),
+    ("ENCHANT_MYSPELL", (8, 0)),
     // FILTER_VALIDATE_URL flag aliases: deprecated 7.3, removed 8.0 (stub
     // @deprecated 7.3 / @removed 8.0 in filter/filter.php).
     ("FILTER_FLAG_HOST_REQUIRED", (7, 3)),
@@ -317,6 +364,12 @@ pub(crate) const CONSTANT_DEPRECATIONS: &[(&str, (u8, u8))] = &[
     // FILTER_SANITIZE_STRING: deprecated 8.1 (RFC), still present. Stub
     // @deprecated 8.1.
     ("FILTER_SANITIZE_STRING", (8, 1)),
+    // Mbregex: deprecated 8.6 (RFC: eol-oniguruma; php-src PHP-8.6
+    // mbstring.stub.php #[\Deprecated(since: '8.6')]).
+    ("MB_ONIGURUMA_VERSION", (8, 6)),
+    // Deprecated 8.6 for the Collator sort methods (PHP 8.6 deprecations RFC;
+    // php-src PHP-8.6 basic_functions.stub.php #[\Deprecated(since: "8.6")]).
+    ("SORT_LOCALE_STRING", (8, 6)),
 ];
 
 /// Editorial constant deprecation successors. Empty: none of the deprecated
@@ -338,10 +391,14 @@ pub(crate) const CONSTANT_REPLACEMENTS: &[(&str, &str)] = &[];
 /// a correction for an extension not listed here fails generation.
 pub(crate) const CLASS_ADDED_ARTIFACT_EXTENSIONS: &[&str] = &["tidy", "xsl", "zip"];
 
-/// Reviewed per-symbol class `added` overrides. Empty: the cache diff agrees with
-/// PHPCompatibility's NewClassesSniff for every class (0 disagreements). The slot
-/// exists for a future class the diff and artefact rule cannot date. (lowercased)
-pub(crate) const CLASS_ADDED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[];
+/// Reviewed per-symbol class `added` overrides, for classes the diff and
+/// artefact rule cannot date. (lowercased)
+pub(crate) const CLASS_ADDED_OVERRIDES: &[(&str, Option<(u8, u8)>)] = &[
+    // Added 5.2 (PHP manual, PHPCompatibility). The 7.3 baseline build lacks zip
+    // while the 7.4 build has it, so the diff says 7.4 and the floor-extension
+    // guard blocks the artefact correction.
+    ("ziparchive", None),
+];
 
 /// Reviewed per-symbol class `removed` overrides: the DOM Level 3 classes that
 /// phpstorm-stubs drops at 8.0. Nine carry an explicit stub `@removed = 8.0`;

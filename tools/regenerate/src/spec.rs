@@ -81,6 +81,9 @@ pub(crate) struct KindSpec {
     /// `removed` sentinels guarding RemovedSniff parser drift (name -> version).
     pub(crate) removed_sniff_sanity: &'static [(&'static str, (u8, u8))],
     pub(crate) added_overrides: &'static [(&'static str, Option<(u8, u8)>)],
+    /// Names skipped by the `added` cross-check; see
+    /// [`CONSTANT_ADDED_PHPCOMPAT_EXEMPTIONS`].
+    pub(crate) added_phpcompat_exemptions: &'static [&'static str],
     pub(crate) removed_overrides: &'static [(&'static str, Option<(u8, u8)>)],
     pub(crate) added_artefact_exts: &'static [&'static str],
     pub(crate) removed_artefact_exts: &'static [&'static str],
@@ -114,6 +117,7 @@ pub(crate) fn function_spec() -> KindSpec {
             ("each", (8, 0)),
         ],
         added_overrides: FUNCTION_ADDED_OVERRIDES,
+        added_phpcompat_exemptions: &[],
         removed_overrides: FUNCTION_REMOVED_OVERRIDES,
         added_artefact_exts: FUNCTION_ADDED_ARTIFACT_EXTENSIONS,
         removed_artefact_exts: FUNCTION_REMOVED_ARTIFACT_EXTENSIONS,
@@ -154,6 +158,7 @@ pub(crate) fn constant_spec() -> KindSpec {
             ("MB_OVERLOAD_STRING", (8, 0)),
         ],
         added_overrides: CONSTANT_ADDED_OVERRIDES,
+        added_phpcompat_exemptions: CONSTANT_ADDED_PHPCOMPAT_EXEMPTIONS,
         removed_overrides: CONSTANT_REMOVED_OVERRIDES,
         added_artefact_exts: CONSTANT_ADDED_ARTIFACT_EXTENSIONS,
         removed_artefact_exts: CONSTANT_REMOVED_ARTIFACT_EXTENSIONS,
@@ -183,6 +188,7 @@ pub(crate) fn class_spec() -> KindSpec {
         new_sniff_sanity: &[("weakreference", (7, 4)), ("fiber", (8, 1))],
         removed_sniff_sanity: &[("hw_api", (5, 2)), ("imap\\connection", (8, 4))],
         added_overrides: CLASS_ADDED_OVERRIDES,
+        added_phpcompat_exemptions: &[],
         removed_overrides: CLASS_REMOVED_OVERRIDES,
         added_artefact_exts: CLASS_ADDED_ARTIFACT_EXTENSIONS,
         removed_artefact_exts: CLASS_REMOVED_ARTIFACT_EXTENSIONS,

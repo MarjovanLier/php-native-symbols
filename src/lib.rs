@@ -49,6 +49,7 @@ mod compatibility;
 mod constants;
 mod extension;
 mod generated;
+mod lifecycle;
 mod lookup;
 mod provenance;
 mod query;

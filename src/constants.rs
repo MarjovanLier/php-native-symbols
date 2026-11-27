@@ -74,7 +74,7 @@ pub fn constants_available_at(version: PhpVersion) -> impl Iterator<Item = &'sta
 pub fn constants_added_in(
     version: PhpVersion,
 ) -> impl Iterator<Item = (&'static str, &'static Availability)> {
-    constants().filter(move |(_, availability)| availability.added == Some(version))
+    constants().filter(move |(_, availability)| availability.is_added_in(version))
 }
 
 /// Iterate native constants deprecated at or before `version`.
@@ -88,11 +88,7 @@ pub fn constants_deprecated_as_of(
 pub fn constants_removed_by(
     version: PhpVersion,
 ) -> impl Iterator<Item = (&'static str, &'static Availability)> {
-    constants().filter(move |(_, availability)| {
-        availability
-            .removed
-            .is_some_and(|removed| removed <= version)
-    })
+    constants().filter(move |(_, availability)| availability.is_removed_by(version))
 }
 
 /// Whether `name` is a native constant available at `version` (case-sensitive).

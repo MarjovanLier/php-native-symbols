@@ -121,7 +121,8 @@ pub fn function_changes_between(
 ) -> Result<impl Iterator<Item = FunctionChange>, VersionRangeError> {
     ensure_forward_range(from, to)?;
     Ok(functions().flat_map(move |(name, availability)| {
-        change_kinds(*availability, from, to)
+        availability
+            .changes_between(from, to)
             .into_iter()
             .flatten()
             .map(move |(kind, version)| FunctionChange::Changed {
@@ -140,7 +141,8 @@ pub fn constant_changes_between(
 ) -> Result<impl Iterator<Item = ConstantChange>, VersionRangeError> {
     ensure_forward_range(from, to)?;
     Ok(constants().flat_map(move |(name, availability)| {
-        change_kinds(*availability, from, to)
+        availability
+            .changes_between(from, to)
             .into_iter()
             .flatten()
             .map(move |(kind, version)| ConstantChange::Changed {
@@ -159,7 +161,8 @@ pub fn class_changes_between(
 ) -> Result<impl Iterator<Item = ClassChange>, VersionRangeError> {
     ensure_forward_range(from, to)?;
     Ok(classes().flat_map(move |(name, availability)| {
-        change_kinds(*availability, from, to)
+        availability
+            .changes_between(from, to)
             .into_iter()
             .flatten()
             .map(move |(kind, version)| ClassChange::Changed {
@@ -178,7 +181,8 @@ pub fn method_changes_between(
 ) -> Result<impl Iterator<Item = MethodChange>, VersionRangeError> {
     ensure_forward_range(from, to)?;
     Ok(methods().flat_map(move |(class, method, availability)| {
-        change_kinds(*availability, from, to)
+        availability
+            .changes_between(from, to)
             .into_iter()
             .flatten()
             .map(move |(kind, version)| MethodChange::Changed {
@@ -214,7 +218,8 @@ fn ensure_forward_range(from: PhpVersion, to: PhpVersion) -> Result<(), VersionR
 
 fn function_changes_iter(from: PhpVersion, to: PhpVersion) -> impl Iterator<Item = FunctionChange> {
     functions().flat_map(move |(name, availability)| {
-        change_kinds(*availability, from, to)
+        availability
+            .changes_between(from, to)
             .into_iter()
             .flatten()
             .map(move |(kind, version)| FunctionChange::Changed {
@@ -228,7 +233,8 @@ fn function_changes_iter(from: PhpVersion, to: PhpVersion) -> impl Iterator<Item
 
 fn constant_changes_iter(from: PhpVersion, to: PhpVersion) -> impl Iterator<Item = ConstantChange> {
     constants().flat_map(move |(name, availability)| {
-        change_kinds(*availability, from, to)
+        availability
+            .changes_between(from, to)
             .into_iter()
             .flatten()
             .map(move |(kind, version)| ConstantChange::Changed {
@@ -242,7 +248,8 @@ fn constant_changes_iter(from: PhpVersion, to: PhpVersion) -> impl Iterator<Item
 
 fn class_changes_iter(from: PhpVersion, to: PhpVersion) -> impl Iterator<Item = ClassChange> {
     classes().flat_map(move |(name, availability)| {
-        change_kinds(*availability, from, to)
+        availability
+            .changes_between(from, to)
             .into_iter()
             .flatten()
             .map(move |(kind, version)| ClassChange::Changed {
@@ -256,7 +263,8 @@ fn class_changes_iter(from: PhpVersion, to: PhpVersion) -> impl Iterator<Item = 
 
 fn method_changes_iter(from: PhpVersion, to: PhpVersion) -> impl Iterator<Item = MethodChange> {
     methods().flat_map(move |(class, method, availability)| {
-        change_kinds(*availability, from, to)
+        availability
+            .changes_between(from, to)
             .into_iter()
             .flatten()
             .map(move |(kind, version)| MethodChange::Changed {
@@ -267,33 +275,4 @@ fn method_changes_iter(from: PhpVersion, to: PhpVersion) -> impl Iterator<Item =
                 availability: *availability,
             })
     })
-}
-
-fn change_kinds(
-    availability: Availability,
-    from: PhpVersion,
-    to: PhpVersion,
-) -> [Option<(SymbolChangeKind, PhpVersion)>; 3] {
-    [
-        change_in_range(availability.added, SymbolChangeKind::Added, from, to),
-        change_in_range(
-            availability.deprecated,
-            SymbolChangeKind::Deprecated,
-            from,
-            to,
-        ),
-        change_in_range(availability.removed, SymbolChangeKind::Removed, from, to),
-    ]
-}
-
-fn change_in_range(
-    version: Option<PhpVersion>,
-    kind: SymbolChangeKind,
-    from: PhpVersion,
-    to: PhpVersion,
-) -> Option<(SymbolChangeKind, PhpVersion)> {
-    match version {
-        Some(version) if from < version && version <= to => Some((kind, version)),
-        _ => None,
-    }
 }

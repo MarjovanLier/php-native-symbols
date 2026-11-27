@@ -90,7 +90,7 @@ pub fn classes_available_at(version: PhpVersion) -> impl Iterator<Item = &'stati
 pub fn classes_added_in(
     version: PhpVersion,
 ) -> impl Iterator<Item = (&'static str, &'static Availability)> {
-    classes().filter(move |(_, availability)| availability.added == Some(version))
+    classes().filter(move |(_, availability)| availability.is_added_in(version))
 }
 
 /// Iterate native class-likes deprecated at or before `version`.
@@ -104,11 +104,7 @@ pub fn classes_deprecated_as_of(
 pub fn classes_removed_by(
     version: PhpVersion,
 ) -> impl Iterator<Item = (&'static str, &'static Availability)> {
-    classes().filter(move |(_, availability)| {
-        availability
-            .removed
-            .is_some_and(|removed| removed <= version)
-    })
+    classes().filter(move |(_, availability)| availability.is_removed_by(version))
 }
 
 /// Iterate every declared native method as `(class, method, &Availability)`, in
@@ -139,7 +135,7 @@ pub fn methods_available_at(
 pub fn methods_added_in(
     version: PhpVersion,
 ) -> impl Iterator<Item = (&'static str, &'static str, &'static Availability)> {
-    methods().filter(move |(_, _, availability)| availability.added == Some(version))
+    methods().filter(move |(_, _, availability)| availability.is_added_in(version))
 }
 
 /// Iterate declared native methods deprecated at or before `version`.
@@ -153,11 +149,7 @@ pub fn methods_deprecated_as_of(
 pub fn methods_removed_by(
     version: PhpVersion,
 ) -> impl Iterator<Item = (&'static str, &'static str, &'static Availability)> {
-    methods().filter(move |(_, _, availability)| {
-        availability
-            .removed
-            .is_some_and(|removed| removed <= version)
-    })
+    methods().filter(move |(_, _, availability)| availability.is_removed_by(version))
 }
 
 /// Whether `name` is a native class-like available at `version` (case-insensitive).
@@ -351,36 +343,17 @@ fn effective_callable_availability(
     class_availability: Availability,
     method_availability: Availability,
 ) -> Availability {
+    let window = class_availability
+        .window()
+        .intersect(method_availability.window());
     Availability {
-        added: latest_present([class_availability.added, method_availability.added]),
-        removed: earliest_present([class_availability.removed, method_availability.removed]),
+        added: window.minimum_required,
+        removed: window.upper_bound_exclusive,
         deprecated: method_availability.deprecated,
         replacement: method_availability.replacement,
         extension: method_availability.extension,
         compiler_optimized: method_availability.compiler_optimized,
     }
-}
-
-fn latest_present(versions: [Option<PhpVersion>; 2]) -> Option<PhpVersion> {
-    let mut latest: Option<PhpVersion> = None;
-    for version in versions.into_iter().flatten() {
-        latest = Some(match latest {
-            Some(current) => current.max(version),
-            None => version,
-        });
-    }
-    latest
-}
-
-fn earliest_present(versions: [Option<PhpVersion>; 2]) -> Option<PhpVersion> {
-    let mut earliest: Option<PhpVersion> = None;
-    for version in versions.into_iter().flatten() {
-        earliest = Some(match earliest {
-            Some(current) => current.min(version),
-            None => version,
-        });
-    }
-    earliest
 }
 
 #[cfg(test)]

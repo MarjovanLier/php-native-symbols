@@ -4,7 +4,7 @@
 
 `php-native-symbols` is a pure-data Rust crate. It answers whether a PHP native
 symbol was available, deprecated or removed in a given PHP version. The current
-coverage range is PHP 7.4 through PHP 8.5. The crate exposes typed lookups over
+coverage range is PHP 7.4 through PHP 8.6. The crate exposes typed lookups over
 generated static tables for functions, constants, classes and declared methods.
 
 The concrete consumer for this spec is a Mago-like tool:
@@ -394,7 +394,7 @@ pub fn source_manifest() -> SourceManifest;
 #### Semantics And Edge Cases
 
 - `supported_versions()` returns the exact minor versions the tables cover:
-  currently 7.4, 8.0, 8.1, 8.2, 8.3, 8.4 and 8.5.
+  currently 7.4, 8.0, 8.1, 8.2, 8.3, 8.4, 8.5 and 8.6.
 - `coverage_range().first` is the first supported minor version.
 - `coverage_range().last` is the last supported minor version.
 - Patch values in `supported_versions()` are always zero.

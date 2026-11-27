@@ -2,7 +2,7 @@
 
 use crate::PhpVersion;
 
-static SUPPORTED_VERSIONS: [PhpVersion; 7] = [
+static SUPPORTED_VERSIONS: [PhpVersion; 8] = [
     PhpVersion::minor(7, 4),
     PhpVersion::minor(8, 0),
     PhpVersion::minor(8, 1),
@@ -10,6 +10,7 @@ static SUPPORTED_VERSIONS: [PhpVersion; 7] = [
     PhpVersion::minor(8, 3),
     PhpVersion::minor(8, 4),
     PhpVersion::minor(8, 5),
+    PhpVersion::minor(8, 6),
 ];
 
 static SOURCES: [SourceInfo; 4] = [
@@ -18,7 +19,7 @@ static SOURCES: [SourceInfo; 4] = [
         licence: "Apache-2.0",
         role: SourceRole::Primary,
         url: "https://github.com/JetBrains/phpstorm-stubs",
-        pinned: Some("commit 7f1c9cada07266d488698b6c9128503d6c94e58b"),
+        pinned: Some("commit 0b7315a001bc35745e58333f4ec41ca065e96bab"),
     },
     SourceInfo {
         name: "PHP-CS-Fixer",
@@ -32,7 +33,7 @@ static SOURCES: [SourceInfo; 4] = [
         licence: "LGPL-3.0",
         role: SourceRole::VerificationOnly,
         url: "https://github.com/PHPCompatibility/PHPCompatibility",
-        pinned: Some("develop commit d9a91bdf66d39fbd5c22272a592c8b63a1d0954f"),
+        pinned: Some("develop commit dae7dd229b0b2955f5776199497f24985e3c95ad"),
     },
     SourceInfo {
         name: "The PHP manual",

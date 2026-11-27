@@ -40,7 +40,7 @@ pub struct CallableMethod {
 ///
 /// Returns `None` when the name is not a known native class-like. An `added` of
 /// `None` on the result means it predates the PHP 7.4 coverage floor: treat it as
-/// always available within 7.4 to 8.5.
+/// always available within 7.4 to 8.6.
 #[must_use]
 pub fn class_availability(name: &str) -> Option<Availability> {
     resolve_class(name).map(|(_, availability)| availability)
@@ -58,7 +58,7 @@ pub fn resolve_class(name: &str) -> Option<(&'static str, Availability)> {
 }
 
 /// Whether `name` is a known native class, interface or enum anywhere in PHP 7.4
-/// to 8.5 (case-insensitive).
+/// to 8.6 (case-insensitive).
 #[must_use]
 pub fn is_class(name: &str) -> bool {
     class_availability(name).is_some()
@@ -76,7 +76,7 @@ pub fn classes() -> impl Iterator<Item = (&'static str, &'static Availability)> 
 /// available at `version`, in sorted order: the per-version class list. Included
 /// when introduced at or before `version` and not yet removed (class-likes
 /// predating the 7.4 floor are included). Intended for the supported range
-/// (7.4 to 8.5).
+/// (7.4 to 8.6).
 pub fn classes_available_at(version: PhpVersion) -> impl Iterator<Item = &'static str> {
     classes()
         .filter(move |(_, availability)| availability.is_available_at(version))
@@ -119,7 +119,7 @@ pub fn methods() -> impl Iterator<Item = (&'static str, &'static str, &'static A
 /// `(class, method)` (both lowercased), in sorted order: the per-version method
 /// list. Included when introduced at or before `version` and not yet removed. A
 /// method carries its own `@since` or its class's, so a method can arrive after
-/// its class. Intended for the supported range (7.4 to 8.5).
+/// its class. Intended for the supported range (7.4 to 8.6).
 pub fn methods_available_at(
     version: PhpVersion,
 ) -> impl Iterator<Item = (&'static str, &'static str)> {
@@ -293,7 +293,7 @@ pub fn resolve_method(
 }
 
 /// Whether `class` itself declares the native method `method` anywhere in PHP 7.4
-/// to 8.5 (both case-insensitive, declared-only).
+/// to 8.6 (both case-insensitive, declared-only).
 #[must_use]
 pub fn is_method(class: &str, method: &str) -> bool {
     method_availability(class, method).is_some()
@@ -590,6 +590,7 @@ mod tests {
             PhpVersion::minor(8, 3),
             PhpVersion::minor(8, 4),
             PhpVersion::minor(8, 5),
+            PhpVersion::minor(8, 6),
         ];
         assert!(
             !availability.extension.is_empty(),

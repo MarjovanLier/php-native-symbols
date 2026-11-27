@@ -40,6 +40,7 @@ git clone https://github.com/PHPCompatibility/PHPCompatibility.git
 git -C PHPCompatibility checkout <PHPCOMPATIBILITY_SHA>
 
 cargo run -p regenerate -- ./phpstorm-stubs ./PHPCompatibility
+cargo run -p regenerate -- ./phpstorm-stubs --hierarchy-only
 cargo fmt --all && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
 ```
 
@@ -63,7 +64,9 @@ When a new PHP minor lands and upstream catches up:
    - `added/PHPCompatibility disagreement` - the cache diff disagrees with
      `New*Sniff`. Resolve each against the PHP manual by adding a reviewed entry
      to the kind's `*_ADDED_OVERRIDES`, or fix the data understanding. Never
-     silence it by guessing.
+     silence it by guessing. Only when php-src shows that no real build ever
+     compiled PHPCompatibility's version may the name go in
+     `CONSTANT_ADDED_PHPCOMPAT_EXEMPTIONS`, with the evidence in a comment.
    - `removed_unconfirmed_artefact` - a symbol disappeared but PHPCompatibility
      is silent and its extension is not a reviewed removed-artefact extension.
      Either it is a genuine removal (add to `*_REMOVED_OVERRIDES`), or its
@@ -98,4 +101,6 @@ The override and artefact-extension lists, the curated deprecations and the
 editorial replacements are the only hand-maintained values. Everything else is
 derived and cross-checked. Each override is a PHP-manual fact that must agree
 with PHPCompatibility where PHPCompatibility has an opinion; an override may not
-overrule it. See `NOTICE` for the full provenance.
+overrule it. The single exception is `CONSTANT_ADDED_PHPCOMPAT_EXEMPTIONS`,
+where php-src shows that PHPCompatibility's version was never compiled. See
+`NOTICE` for the full provenance.

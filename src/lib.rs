@@ -3,7 +3,7 @@
 //! Answers one question per symbol: in which PHP versions was it available,
 //! deprecated and removed? See the crate README for the model.
 //!
-//! Coverage walks the ladder PHP 7.4 -> 8.0 -> 8.1 -> 8.2 -> 8.3 -> 8.4 -> 8.5.
+//! Coverage walks the ladder PHP 7.4 -> 8.0 -> 8.1 -> 8.2 -> 8.3 -> 8.4 -> 8.5 -> 8.6.
 //! A symbol present at or before the 7.4 floor carries `added: None`; one
 //! introduced later carries its real version; a deprecated-but-present symbol
 //! stays in the table and is flagged via `deprecated`; a symbol removed at or

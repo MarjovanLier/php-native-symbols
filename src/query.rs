@@ -13,7 +13,7 @@ use crate::{Availability, PhpVersion};
 ///
 /// Returns `None` when the name is not a known native function. An `added` of
 /// `None` on the result means the function predates the PHP 7.4 coverage floor:
-/// treat it as always available within 7.4 to 8.5.
+/// treat it as always available within 7.4 to 8.6.
 #[must_use]
 pub fn function_availability(name: &str) -> Option<Availability> {
     resolve_function(name).map(|(_, availability)| availability)
@@ -30,7 +30,7 @@ pub fn resolve_function(name: &str) -> Option<(&'static str, Availability)> {
         .map(|index| FUNCTIONS[index])
 }
 
-/// Whether `name` is a known native function anywhere in PHP 7.4 to 8.5.
+/// Whether `name` is a known native function anywhere in PHP 7.4 to 8.6.
 #[must_use]
 pub fn is_function(name: &str) -> bool {
     function_availability(name).is_some()
@@ -49,7 +49,7 @@ pub fn functions() -> impl Iterator<Item = (&'static str, &'static Availability)
 /// order: the per-version function list. A function is included when it is
 /// introduced at or before `version` and not yet removed (functions predating
 /// the 7.4 floor are included). Intended for versions in the supported range
-/// (7.4 to 8.5).
+/// (7.4 to 8.6).
 pub fn functions_available_at(version: PhpVersion) -> impl Iterator<Item = &'static str> {
     functions()
         .filter(move |(_, availability)| availability.is_available_at(version))
@@ -89,7 +89,7 @@ pub fn functions_removed_by(
 /// `None` for functions predating the 7.4 floor, which count as present) and not
 /// yet removed (`removed` absent, or strictly after `version`). A deprecated but
 /// still-present function counts as available. Intended for versions in the
-/// supported range (7.4 to 8.5).
+/// supported range (7.4 to 8.6).
 #[must_use]
 pub fn is_function_available(name: &str, version: PhpVersion) -> bool {
     let Some(availability) = function_availability(name) else {
@@ -103,7 +103,7 @@ pub fn is_function_available(name: &str, version: PhpVersion) -> bool {
 /// True when the function has a deprecation version at or before `version`.
 /// Returns `false` for an unknown name or one never deprecated. A function stays
 /// deprecated once deprecated, including after it is removed. Intended for
-/// versions in the supported range (7.4 to 8.5).
+/// versions in the supported range (7.4 to 8.6).
 #[must_use]
 pub fn is_function_deprecated_at(name: &str, version: PhpVersion) -> bool {
     let Some(availability) = function_availability(name) else {
@@ -179,6 +179,7 @@ mod tests {
             PhpVersion::minor(8, 3),
             PhpVersion::minor(8, 4),
             PhpVersion::minor(8, 5),
+            PhpVersion::minor(8, 6),
         ];
         // Strictly increasing keys => sorted and unique, so binary search holds.
         for pair in FUNCTIONS.windows(2) {

@@ -12,7 +12,7 @@ the permissive sources allow us to redistribute.
 JetBrains phpstorm-stubs  (primary data source)
   Licence: Apache-2.0
   Source:  https://github.com/JetBrains/phpstorm-stubs
-  Pinned:  commit 7f1c9cada07266d488698b6c9128503d6c94e58b
+  Pinned:  commit 0b7315a001bc35745e58333f4ec41ca065e96bab
   Used for: native function, constant and class/interface/enum names and
             per-version presence (derived by diffing the per-version reflection
             caches tests/cache/Reflection*.json: presence gives added and
@@ -60,7 +60,7 @@ PHP-CS-Fixer  (compiler_optimized flag)
 PHPCompatibility  (verification only)
   Licence: LGPL-3.0
   Source:  https://github.com/PHPCompatibility/PHPCompatibility
-  Pinned:  develop commit d9a91bdf66d39fbd5c22272a592c8b63a1d0954f
+  Pinned:  develop commit dae7dd229b0b2955f5776199497f24985e3c95ad
   Used for: cross-checking the cache-derived versions only. For functions,
             NewFunctionsSniff verifies added; RemovedFunctionsSniff verifies
             removed (its true version) and deprecated (its false version) and
@@ -86,7 +86,11 @@ The PHP manual  (https://www.php.net/manual)  (editorial authority)
                Level 3 classes removed 8.0. Each must agree with PHPCompatibility
                where PHPCompatibility has an opinion; an override never overrules
                it. These are version facts (not copyrightable), cross-checked, and
-               fact-locked in tests.
+               fact-locked in tests. The one exception is the reviewed
+               CONSTANT_ADDED_PHPCOMPAT_EXEMPTIONS list: constants whose
+               PHPCompatibility version php-src shows no real build compiled
+               (PGSQL_CONNECTION_SSL_STARTUP, guarded before 8.6 by an #ifdef on
+               a libpq enum member). They ship the cache-derived version.
             2. Curated deprecation versions for constants, classes and methods.
                The reflection caches carry no usable deprecation flag for
                constants or classes (and methods carry a flag with no version),

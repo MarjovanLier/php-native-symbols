@@ -21,7 +21,7 @@ fn normalise_constant(name: &str) -> &str {
 ///
 /// Returns `None` when the name is not a known native constant. An `added` of
 /// `None` on the result means the constant predates the PHP 7.4 coverage floor:
-/// treat it as always available within 7.4 to 8.5.
+/// treat it as always available within 7.4 to 8.6.
 #[must_use]
 pub fn constant_availability(name: &str) -> Option<Availability> {
     resolve_constant(name).map(|(_, availability)| availability)
@@ -41,7 +41,7 @@ pub fn resolve_constant(name: &str) -> Option<(&'static str, Availability)> {
         .map(|index| CONSTANTS[index])
 }
 
-/// Whether `name` is a known native constant anywhere in PHP 7.4 to 8.5
+/// Whether `name` is a known native constant anywhere in PHP 7.4 to 8.6
 /// (case-sensitive).
 #[must_use]
 pub fn is_constant(name: &str) -> bool {
@@ -60,7 +60,7 @@ pub fn constants() -> impl Iterator<Item = (&'static str, &'static Availability)
 /// (case-sensitive), in sorted order: the per-version constant list. Included
 /// when introduced at or before `version` and not yet removed (constants
 /// predating the 7.4 floor are included). Intended for the supported range
-/// (7.4 to 8.5).
+/// (7.4 to 8.6).
 pub fn constants_available_at(version: PhpVersion) -> impl Iterator<Item = &'static str> {
     constants()
         .filter(move |(_, availability)| availability.is_available_at(version))
@@ -95,7 +95,7 @@ pub fn constants_removed_by(
 ///
 /// Available means present at `version`: introduced at or before it and not yet
 /// removed. A deprecated but still-present constant counts as available.
-/// Intended for versions in the supported range (7.4 to 8.5).
+/// Intended for versions in the supported range (7.4 to 8.6).
 #[must_use]
 pub fn is_constant_available(name: &str, version: PhpVersion) -> bool {
     let Some(availability) = constant_availability(name) else {
@@ -254,6 +254,7 @@ mod tests {
             PhpVersion::minor(8, 3),
             PhpVersion::minor(8, 4),
             PhpVersion::minor(8, 5),
+            PhpVersion::minor(8, 6),
         ];
         // Strictly increasing exact-byte keys => sorted and unique, so the
         // case-sensitive binary search holds. Names are NOT lowercased here.

@@ -24,6 +24,7 @@ const PHP_82: PhpVersion = PhpVersion::minor(8, 2);
 const PHP_83: PhpVersion = PhpVersion::minor(8, 3);
 const PHP_84: PhpVersion = PhpVersion::minor(8, 4);
 const PHP_85: PhpVersion = PhpVersion::minor(8, 5);
+const PHP_86: PhpVersion = PhpVersion::minor(8, 6);
 
 fn cloned_through_trait<T: Clone>(value: &T) -> T {
     value.clone()
@@ -346,7 +347,9 @@ fn unified_change_query_wraps_changes_in_symbol_kind_order() {
 
 #[test]
 fn supported_versions_and_source_manifest_are_static_public_facts() {
-    let expected_versions = [PHP_74, PHP_80, PHP_81, PHP_82, PHP_83, PHP_84, PHP_85];
+    let expected_versions = [
+        PHP_74, PHP_80, PHP_81, PHP_82, PHP_83, PHP_84, PHP_85, PHP_86,
+    ];
     assert_eq!(supported_versions(), &expected_versions);
     for pair in supported_versions().windows(2) {
         assert!(pair[0] < pair[1]);
@@ -357,7 +360,7 @@ fn supported_versions_and_source_manifest_are_static_public_facts() {
         coverage,
         CoverageRange {
             first: PHP_74,
-            last: PHP_85,
+            last: PHP_86,
             versions: supported_versions(),
         }
     );
@@ -381,7 +384,7 @@ fn supported_versions_and_source_manifest_are_static_public_facts() {
     assert_eq!(phpstorm.role, SourceRole::Primary);
     assert_eq!(
         phpstorm.pinned,
-        Some("commit 7f1c9cada07266d488698b6c9128503d6c94e58b")
+        Some("commit 0b7315a001bc35745e58333f4ec41ca065e96bab")
     );
     assert_eq!(cloned_through_trait(&phpstorm), phpstorm);
     assert!(format!("{phpstorm:?}").contains("phpstorm-stubs"));
@@ -391,7 +394,7 @@ fn supported_versions_and_source_manifest_are_static_public_facts() {
     assert_eq!(phpcompat.role, SourceRole::VerificationOnly);
     assert_eq!(
         phpcompat.pinned,
-        Some("develop commit d9a91bdf66d39fbd5c22272a592c8b63a1d0954f")
+        Some("develop commit dae7dd229b0b2955f5776199497f24985e3c95ad")
     );
 
     let php_cs_fixer = source_named(manifest.sources, "PHP-CS-Fixer");
@@ -410,6 +413,83 @@ fn supported_versions_and_source_manifest_are_static_public_facts() {
         assert!(!source.url.is_empty());
     }
     assert_eq!(format!("{:?}", SourceRole::Editorial), "Editorial");
+}
+
+#[test]
+fn php_86_facts_and_reviewed_overrides_are_locked() {
+    // New in 8.6 (php-src PHP-8.6 UPGRADING).
+    assert_eq!(function_availability("clamp").unwrap().added, Some(PHP_86));
+    assert_eq!(
+        class_availability("Time\\Duration").unwrap().added,
+        Some(PHP_86)
+    );
+    assert_eq!(
+        constant_availability("TCP_USER_TIMEOUT").unwrap().added,
+        Some(PHP_86)
+    );
+
+    // Deprecated in 8.6: machine-derived for functions, curated for the rest.
+    let is_long = function_availability("is_long").unwrap();
+    assert_eq!(is_long.deprecated, Some(PHP_86));
+    assert_eq!(is_long.replacement, Some("is_int()"));
+    assert_eq!(
+        function_availability("mb_ereg").unwrap().deprecated,
+        Some(PHP_86)
+    );
+    assert_eq!(
+        constant_availability("SORT_LOCALE_STRING")
+            .unwrap()
+            .deprecated,
+        Some(PHP_86)
+    );
+    assert_eq!(
+        constant_availability("MB_ONIGURUMA_VERSION")
+            .unwrap()
+            .deprecated,
+        Some(PHP_86)
+    );
+    assert_eq!(
+        method_availability("ArrayIterator", "asort")
+            .unwrap()
+            .deprecated,
+        Some(PHP_86)
+    );
+    assert_eq!(
+        method_availability("SplFileObject", "fgetcsv")
+            .unwrap()
+            .deprecated,
+        Some(PHP_86)
+    );
+    assert_eq!(
+        method_availability("mysqli", "stmt_init")
+            .unwrap()
+            .deprecated,
+        Some(PHP_86)
+    );
+
+    // Reviewed overrides for build artefacts in the pinned reflection caches.
+    assert_eq!(function_availability("chroot").unwrap().removed, None);
+    assert_eq!(function_availability("zip_open").unwrap().added, None);
+    assert_eq!(class_availability("ZipArchive").unwrap().added, None);
+    assert_eq!(
+        function_availability("enchant_broker_init").unwrap().added,
+        None
+    );
+    assert_eq!(
+        constant_availability("LIBENCHANT_VERSION").unwrap().added,
+        Some(PHP_80)
+    );
+    assert_eq!(
+        constant_availability("ENCHANT_ISPELL").unwrap().deprecated,
+        Some(PHP_80)
+    );
+    // Reviewed PHPCompatibility exemption: no real build had it before 8.6.
+    assert_eq!(
+        constant_availability("PGSQL_CONNECTION_SSL_STARTUP")
+            .unwrap()
+            .added,
+        Some(PHP_86)
+    );
 }
 
 #[test]

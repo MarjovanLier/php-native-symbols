@@ -1,5 +1,6 @@
 //! Batch compatibility queries for consumers that already resolved PHP symbols.
 
+use crate::lifecycle::LifecycleIssue;
 use crate::symbols::resolve_symbol;
 use crate::{PhpVersion, ResolvedSymbol, SymbolRef};
 
@@ -51,33 +52,6 @@ pub struct CompatibilityWindow {
     pub minimum_required: Option<PhpVersion>,
     /// Minimum `removed` version among known symbols, treated as exclusive.
     pub upper_bound_exclusive: Option<PhpVersion>,
-}
-
-impl CompatibilityWindow {
-    /// Whether the lower and upper bounds cannot both be satisfied.
-    #[must_use]
-    pub fn is_empty(self) -> bool {
-        match (self.minimum_required, self.upper_bound_exclusive) {
-            (Some(minimum_required), Some(upper_bound_exclusive)) => {
-                upper_bound_exclusive <= minimum_required
-            }
-            _ => false,
-        }
-    }
-
-    /// Whether `version` is inside this viable window.
-    #[must_use]
-    pub fn contains(self, version: PhpVersion) -> bool {
-        let minimum_ok = match self.minimum_required {
-            Some(minimum_required) => minimum_required <= version,
-            None => true,
-        };
-        let upper_ok = match self.upper_bound_exclusive {
-            Some(upper_bound_exclusive) => version < upper_bound_exclusive,
-            None => true,
-        };
-        minimum_ok && upper_ok
-    }
 }
 
 /// Batch compatibility output for a target PHP version.
@@ -139,38 +113,24 @@ pub fn compatibility_issue_at<'a>(
         return Some(CompatibilityIssue::Unknown { requested: symbol });
     };
 
-    if let Some(since) = availability.added {
-        if target < since {
-            return Some(CompatibilityIssue::NotYetAvailable {
-                requested: symbol,
-                resolved,
-                since,
-            });
-        }
-    }
-
-    if let Some(version) = availability.removed {
-        if version <= target {
-            return Some(CompatibilityIssue::RemovedIn {
-                requested: symbol,
-                resolved,
-                version,
-            });
-        }
-    }
-
-    if let Some(version) = availability.deprecated {
-        if version <= target {
-            return Some(CompatibilityIssue::DeprecatedSince {
-                requested: symbol,
-                resolved,
-                version,
-                replacement: availability.replacement,
-            });
-        }
-    }
-
-    None
+    availability.issue_at(target).map(|issue| match issue {
+        LifecycleIssue::NotYetAvailable { since } => CompatibilityIssue::NotYetAvailable {
+            requested: symbol,
+            resolved,
+            since,
+        },
+        LifecycleIssue::Removed { version } => CompatibilityIssue::RemovedIn {
+            requested: symbol,
+            resolved,
+            version,
+        },
+        LifecycleIssue::Deprecated { version } => CompatibilityIssue::DeprecatedSince {
+            requested: symbol,
+            resolved,
+            version,
+            replacement: availability.replacement,
+        },
+    })
 }
 
 /// Return compatibility issues and the viable PHP version window for `symbols`.
@@ -201,30 +161,14 @@ pub fn compatibility_window<'a, I>(symbols: I) -> CompatibilityWindow
 where
     I: IntoIterator<Item = SymbolRef<'a>>,
 {
-    let mut window = CompatibilityWindow {
+    let unbounded = CompatibilityWindow {
         minimum_required: None,
         upper_bound_exclusive: None,
     };
-
-    for symbol in symbols {
-        let Some((_, availability)) = resolve_symbol(symbol) else {
-            continue;
-        };
-
-        if let Some(added) = availability.added {
-            window.minimum_required = Some(match window.minimum_required {
-                Some(current) => current.max(added),
-                None => added,
-            });
-        }
-
-        if let Some(removed) = availability.removed {
-            window.upper_bound_exclusive = Some(match window.upper_bound_exclusive {
-                Some(current) => current.min(removed),
-                None => removed,
-            });
-        }
-    }
-
-    window
+    symbols
+        .into_iter()
+        .filter_map(resolve_symbol)
+        .fold(unbounded, |window, (_, availability)| {
+            window.intersect(availability.window())
+        })
 }

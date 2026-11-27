@@ -63,7 +63,7 @@ pub fn functions_available_at(version: PhpVersion) -> impl Iterator<Item = &'sta
 pub fn functions_added_in(
     version: PhpVersion,
 ) -> impl Iterator<Item = (&'static str, &'static Availability)> {
-    functions().filter(move |(_, availability)| availability.added == Some(version))
+    functions().filter(move |(_, availability)| availability.is_added_in(version))
 }
 
 /// Iterate native functions deprecated at or before `version`.
@@ -80,11 +80,7 @@ pub fn functions_deprecated_as_of(
 pub fn functions_removed_by(
     version: PhpVersion,
 ) -> impl Iterator<Item = (&'static str, &'static Availability)> {
-    functions().filter(move |(_, availability)| {
-        availability
-            .removed
-            .is_some_and(|removed| removed <= version)
-    })
+    functions().filter(move |(_, availability)| availability.is_removed_by(version))
 }
 
 /// Whether `name` is a native function available at `version`.

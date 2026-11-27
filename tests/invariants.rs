@@ -5,7 +5,10 @@
 //! every kind. The proptest covers `PhpVersion` parsing and ordering.
 
 use php_native_symbols::{
-    classes, constants, functions, is_core_extension, methods, Availability, PhpVersion,
+    classes, compatibility_issue_at, constants, functions, is_class_available,
+    is_class_deprecated_at, is_constant_available, is_constant_deprecated_at, is_core_extension,
+    is_function_available, is_function_deprecated_at, is_method_available, is_method_deprecated_at,
+    methods, supported_versions, Availability, CompatibilityIssue, PhpVersion, SymbolRef,
 };
 use proptest::prelude::*;
 
@@ -71,6 +74,61 @@ fn every_row_of_every_table_holds_the_invariants() {
     }
     for (class, method, a) in methods() {
         check_row(&format!("method {class}::{method}"), a);
+    }
+}
+
+/// Assert that `compatibility_issue_at` and the `is_*` predicates agree on one
+/// symbol at `version`: an availability issue exactly when the symbol is not
+/// available, and a deprecation issue exactly when it is available but
+/// deprecated.
+fn check_agreement(symbol: SymbolRef<'_>, version: PhpVersion, available: bool, deprecated: bool) {
+    let issue = compatibility_issue_at(symbol, version);
+    let unavailable = matches!(
+        issue,
+        Some(CompatibilityIssue::NotYetAvailable { .. } | CompatibilityIssue::RemovedIn { .. })
+    );
+    assert_eq!(unavailable, !available, "{symbol:?} at {version:?}");
+    if available {
+        let reported_deprecated = matches!(issue, Some(CompatibilityIssue::DeprecatedSince { .. }));
+        assert_eq!(reported_deprecated, deprecated, "{symbol:?} at {version:?}");
+    }
+}
+
+#[test]
+fn compatibility_issues_agree_with_the_availability_predicates() {
+    for &version in supported_versions() {
+        for (name, _) in functions() {
+            check_agreement(
+                SymbolRef::Function(name),
+                version,
+                is_function_available(name, version),
+                is_function_deprecated_at(name, version),
+            );
+        }
+        for (name, _) in constants() {
+            check_agreement(
+                SymbolRef::Constant(name),
+                version,
+                is_constant_available(name, version),
+                is_constant_deprecated_at(name, version),
+            );
+        }
+        for (name, _) in classes() {
+            check_agreement(
+                SymbolRef::Class(name),
+                version,
+                is_class_available(name, version),
+                is_class_deprecated_at(name, version),
+            );
+        }
+        for (class, method, _) in methods() {
+            check_agreement(
+                SymbolRef::Method { class, method },
+                version,
+                is_method_available(class, method, version),
+                is_method_deprecated_at(class, method, version),
+            );
+        }
     }
 }
 
